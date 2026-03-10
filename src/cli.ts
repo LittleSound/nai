@@ -4,22 +4,8 @@ import * as p from '@clack/prompts'
 import cac from 'cac'
 import { getLatestVersion } from 'fast-npm-meta'
 import { providers } from './providers/index.ts'
+import { parsePackageSpec, type ParsedPackage } from './utils.ts'
 import type { Provider, ResolvedDep } from './type.ts'
-
-interface ParsedPackage {
-  name: string
-  version?: string
-}
-
-/** Parse a package specifier like "react@^18.3.1" or "@types/node@^20" */
-function parsePackageSpec(spec: string): ParsedPackage {
-  const atIndex = spec.indexOf('@', spec.startsWith('@') ? 1 : 0)
-  if (atIndex <= 0) return { name: spec }
-  return {
-    name: spec.slice(0, atIndex),
-    version: spec.slice(atIndex + 1) || undefined,
-  }
-}
 
 /** Auto-detect the first available provider */
 async function detectProvider(): Promise<Provider | undefined> {

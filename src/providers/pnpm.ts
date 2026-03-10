@@ -8,9 +8,7 @@ import type { DepInstallOptions, Provider, RepoPackageItem } from '../type.ts'
 const LOCK_FILE = 'pnpm-lock.yaml'
 const WORKSPACE_FILE = 'pnpm-workspace.yaml'
 
-export function createPnpmProvider(): Provider {
-  const cwd = process.cwd()
-
+export function createPnpmProvider(cwd = process.cwd()): Provider {
   return {
     name: 'pnpm',
     supportsPeerDependencies: true,
