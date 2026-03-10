@@ -35,6 +35,8 @@ export type DepInstallOptions = {
   targetPackages: string[]
   dev: boolean
   peer: boolean
+  /** Log progress messages during execution */
+  logger?: (message: string) => void
 }
 
 export type ResolvedDep = {

@@ -94,6 +94,7 @@ export function createPnpmProvider(cwd = process.cwd()): Provider {
     },
 
     depInstallExecutor(options: DepInstallOptions) {
+      const log = options.logger ?? (() => {})
       const workspacePath = join(cwd, WORKSPACE_FILE)
 
       // 1. Write new catalog entries to pnpm-workspace.yaml
@@ -116,6 +117,7 @@ export function createPnpmProvider(cwd = process.cwd()): Provider {
         }
 
         writeFileSync(workspacePath, doc.toString(), 'utf8')
+        log(`Writing ${WORKSPACE_FILE}`)
       }
 
       // 2. Update package.json for each target package
@@ -144,10 +146,12 @@ export function createPnpmProvider(cwd = process.cwd()): Provider {
         pkg[depField] = sortObject(pkg[depField])
 
         writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, 'utf8')
+        log(`Writing ${pkgPath}`)
       }
 
       // 3. Run pnpm install
-      execFileSync('pnpm', ['install'], { cwd, stdio: 'pipe' })
+      log('Running pnpm install')
+      execFileSync('pnpm', ['install'], { cwd, stdio: 'inherit' })
 
       return Promise.resolve()
     },

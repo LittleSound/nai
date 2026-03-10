@@ -270,23 +270,18 @@ async function run(
   }
 
   // --- Execute ---
-  const s = p.spinner()
-  s.start('Installing dependencies...')
   try {
     await provider.depInstallExecutor({
       deps: resolved,
       targetPackages: targetDirs,
       dev,
       peer,
+      logger: (msg) => p.log.step(msg),
     })
-    s.stop('Dependencies installed')
   } catch (error) {
-    s.stop('Installation failed')
     p.log.error(error instanceof Error ? error.message : String(error))
     process.exit(1)
   }
-
-  p.outro('Done!')
 }
 
 // --- CLI Setup ---
