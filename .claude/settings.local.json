@@ -29,7 +29,10 @@
       "Bash(pnpm install:*)",
       "Bash(find /Users/rizumu/Code/rizumu-nip/src -type f -name \"*.ts\" 2>/dev/null | head -20)",
       "Bash(find /Users/rizumu/Code/rizumu-nip/node_modules -path \"*/@clack*\" -name \"*.ts\" -o -name \"*.tsx\" 2>/dev/null | head -10)",
-      "Bash(pnpm test:*)"
+      "Bash(pnpm test:*)",
+      "Bash(npx tsdown:*)",
+      "Bash(npx tsx:*)",
+      "Bash(pnpm add:*)"
     ],
     "deny": [],
     "ask": []
