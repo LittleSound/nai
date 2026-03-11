@@ -1,4 +1,3 @@
-
 ## Comment Style
 
 - Write comments in English.

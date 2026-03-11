@@ -9,7 +9,7 @@ import {
   resolveWorkspacePackages,
   sortObject,
 } from './shared.ts'
-import type { DepInstallOptions, Provider } from '../type.ts'
+import type { DepInstallOptions, DepRemoveOptions, Provider } from '../type.ts'
 
 const LOCK_FILE = 'yarn.lock'
 const CONFIG_FILE = '.yarnrc.yml'
@@ -130,6 +130,72 @@ export function createYarnProvider(cwd = process.cwd()): Provider {
       }
 
       // 3. Run yarn install
+      log('Running yarn install')
+      execFileSync('yarn', ['install'], { cwd, stdio: 'inherit' })
+
+      return Promise.resolve()
+    },
+
+    depRemoveExecutor(options: DepRemoveOptions) {
+      const log = options.logger ?? (() => {})
+      const configPath = join(cwd, CONFIG_FILE)
+
+      // 1. Remove dependencies from each target package.json
+      for (const dir of options.targetPackages) {
+        const pkgPath = join(dir, 'package.json')
+        const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
+        let modified = false
+
+        for (const depName of options.packageNames) {
+          for (const depField of [
+            'dependencies',
+            'devDependencies',
+            'peerDependencies',
+          ] as const) {
+            if (pkg[depField] && depName in pkg[depField]) {
+              delete pkg[depField][depName]
+              modified = true
+            }
+          }
+        }
+
+        if (modified) {
+          writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, 'utf8')
+          log(`Updating ${pkgPath}`)
+        }
+      }
+
+      // 2. Clean up unused catalog entries if requested
+      if (options.cleanCatalog && existsSync(configPath)) {
+        const content = readFileSync(configPath, 'utf8')
+        const doc = parseDocument(content)
+        let modified = false
+
+        for (const depName of options.packageNames) {
+          // Remove from default catalog
+          if (doc.hasIn(['catalog', depName])) {
+            doc.deleteIn(['catalog', depName])
+            modified = true
+          }
+          // Remove from named catalogs
+          const raw = doc.toJSON()
+          if (raw?.catalogs && typeof raw.catalogs === 'object') {
+            for (const catalogName of Object.keys(raw.catalogs)) {
+              if (doc.hasIn(['catalogs', catalogName, depName])) {
+                doc.deleteIn(['catalogs', catalogName, depName])
+                modified = true
+              }
+            }
+          }
+        }
+
+        if (modified) {
+          writeFileSync(configPath, doc.toString(), 'utf8')
+          log(`Cleaning catalog entries in ${CONFIG_FILE}`)
+        }
+      }
+
+      // 3. Run yarn install to update lockfile
       log('Running yarn install')
       execFileSync('yarn', ['install'], { cwd, stdio: 'inherit' })
 

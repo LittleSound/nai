@@ -30,6 +30,13 @@ export type Provider = {
    * and running install in its own way.
    */
   depInstallExecutor: (options: DepInstallOptions) => Promise<void>
+
+  /**
+   * Execute the dependency removal flow.
+   * Each provider handles catalog cleanup, package.json updates,
+   * and running install in its own way.
+   */
+  depRemoveExecutor: (options: DepRemoveOptions) => Promise<void>
 }
 
 export type DepInstallOptions = {
@@ -38,6 +45,17 @@ export type DepInstallOptions = {
   targetPackages: string[]
   dev: boolean
   peer: boolean
+  /** Log progress messages during execution */
+  logger?: (message: string) => void
+}
+
+export type DepRemoveOptions = {
+  /** Package names to remove */
+  packageNames: string[]
+  /** Target package directories to remove dependencies from */
+  targetPackages: string[]
+  /** Whether to also remove unused catalog entries */
+  cleanCatalog?: boolean
   /** Log progress messages during execution */
   logger?: (message: string) => void
 }
@@ -57,4 +75,5 @@ export type RepoPackageItem = {
   description: string
   dependencies: Record<string, string>
   devDependencies: Record<string, string>
+  peerDependencies: Record<string, string>
 }

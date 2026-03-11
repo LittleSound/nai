@@ -322,6 +322,210 @@ cli
   .option('-C, --catalog <name>', 'Specify catalog name')
   .action(run)
 
+async function runRemove(names: string[], options: { cleanCatalog?: boolean }) {
+  p.intro(`${c.yellow`@rizumu/nai`} ${c.dim`v${version}`} ${c.red`remove`}`)
+
+  // --- Detect or select package manager ---
+  let provider: Provider
+  let pmVersion: string | undefined
+  const detected = await detectProvider()
+  if (detected) {
+    provider = detected.provider
+    pmVersion = detected.version
+    const versionStr = pmVersion ? ` ${c.dim(`v${pmVersion}`)}` : ''
+    p.log.info(`Detected: ${c.bold(provider.name)}${versionStr}`)
+  } else if (providers.length > 0) {
+    const selectedName = guardCancel(
+      await p.select({
+        message: 'No package manager detected. Select one:',
+        options: providers.map((prov) => ({
+          value: prov.name,
+          label: prov.name,
+        })),
+      }),
+    )
+    provider = providers.find((prov) => prov.name === selectedName)!
+  } else {
+    p.log.error('No package manager providers available.')
+    p.outro('Exiting')
+    process.exit(1)
+  }
+
+  // --- Check catalog support ---
+  const catalogCheck = checkCatalogSupport(provider, pmVersion)
+  const catalogsEnabled = catalogCheck.supported
+
+  // --- Get all installed packages across workspace ---
+  const { packages: repoPackages } = await provider.listPackages()
+
+  // Build a map of all dependencies across all packages
+  const allDeps = new Map<
+    string,
+    { name: string; packages: string[]; types: string[] }
+  >()
+
+  for (const pkg of repoPackages) {
+    for (const depField of [
+      'dependencies',
+      'devDependencies',
+      'peerDependencies',
+    ] as const) {
+      const deps = pkg[depField]
+      if (!deps) continue
+      for (const depName of Object.keys(deps)) {
+        const existing = allDeps.get(depName) || {
+          name: depName,
+          packages: [],
+          types: [],
+        }
+        if (!existing.packages.includes(pkg.name)) {
+          existing.packages.push(pkg.name)
+        }
+        if (!existing.types.includes(depField)) {
+          existing.types.push(depField)
+        }
+        allDeps.set(depName, existing)
+      }
+    }
+  }
+
+  if (allDeps.size === 0) {
+    p.log.warn('No dependencies found in any package.')
+    p.outro('Nothing to remove')
+    return
+  }
+
+  // --- Select packages to remove ---
+  let packagesToRemove: string[]
+
+  if (names.length > 0) {
+    // Validate provided names
+    const notFound = names.filter((n) => !allDeps.has(n))
+    if (notFound.length > 0) {
+      p.log.warn(`Packages not found: ${notFound.join(', ')}`)
+    }
+    packagesToRemove = names.filter((n) => allDeps.has(n))
+    if (packagesToRemove.length === 0) {
+      p.log.error('No valid packages to remove.')
+      p.outro('Exiting')
+      return
+    }
+  } else {
+    const sortedDeps = [...allDeps.values()].toSorted((a, b) =>
+      a.name.localeCompare(b.name),
+    )
+
+    packagesToRemove = guardCancel(
+      await p.multiselect({
+        message: 'Select packages to remove',
+        options: sortedDeps.map((dep) => ({
+          value: dep.name,
+          label: c.cyan(dep.name),
+          hint: c.dim(`${dep.packages.length} pkg(s), ${dep.types.join(', ')}`),
+        })),
+      }),
+    )
+  }
+
+  // --- Show which packages will be affected ---
+  const affectedPackages = new Set<string>()
+  for (const depName of packagesToRemove) {
+    const dep = allDeps.get(depName)
+    if (dep) {
+      for (const pkgName of dep.packages) {
+        affectedPackages.add(pkgName)
+      }
+    }
+  }
+
+  // --- Select target packages to remove from ---
+  let targetDirs: string[]
+
+  if (affectedPackages.size <= 1) {
+    const pkgName = [...affectedPackages][0]
+    const pkg = repoPackages.find((p) => p.name === pkgName)
+    targetDirs = pkg ? [pkg.directory] : ['.']
+  } else {
+    targetDirs = guardCancel(
+      await p.multiselect({
+        message: 'Select packages to remove from',
+        options: repoPackages
+          .filter((pkg) => affectedPackages.has(pkg.name))
+          .map((pkg) => ({
+            value: pkg.directory,
+            label: pkg.name,
+            hint: pkg.description || undefined,
+          })),
+        initialValues: repoPackages
+          .filter((pkg) => affectedPackages.has(pkg.name))
+          .map((pkg) => pkg.directory),
+      }),
+    )
+  }
+
+  // --- Ask about catalog cleanup ---
+  let cleanCatalog = options.cleanCatalog ?? false
+
+  if (catalogsEnabled && cleanCatalog === undefined) {
+    cleanCatalog = guardCancel(
+      await p.confirm({
+        message: 'Also remove unused catalog entries?',
+        initialValue: true,
+      }),
+    )
+  }
+
+  // --- Build summary ---
+  const summaryLines = packagesToRemove.map((name) => {
+    const dep = allDeps.get(name)
+    const typeStr = dep ? c.gray(`(${dep.types.join(', ')})`) : ''
+    return `  ${c.red('-')} ${c.cyan(name)} ${typeStr}`
+  })
+
+  const targetNames = targetDirs.map((d) => {
+    const pkg = repoPackages.find((rp) => rp.directory === d)
+    return pkg?.name || d
+  })
+
+  const summaryContent = [
+    `${c.dim('Package manager:')} ${c.bold(provider.name)}`,
+    `${c.dim('Remove from:')} ${c.cyan(targetNames.join(', '))}`,
+    `${c.dim('Clean catalog:')} ${cleanCatalog ? c.green('yes') : c.gray('no')}`,
+    '',
+    ...summaryLines,
+  ].join('\n')
+
+  p.note(c.reset(summaryContent), 'Summary')
+
+  const confirmed = guardCancel(
+    await p.confirm({ message: c.red('Remove selected packages?') }),
+  )
+  if (!confirmed) {
+    p.cancel('Cancelled.')
+    process.exit(0)
+  }
+
+  // --- Execute ---
+  try {
+    await provider.depRemoveExecutor({
+      packageNames: packagesToRemove,
+      targetPackages: targetDirs,
+      cleanCatalog,
+      logger: (msg) => p.log.step(msg),
+    })
+    p.outro(c.green('Done!'))
+  } catch (error) {
+    p.log.error(error instanceof Error ? error.message : String(error))
+    process.exit(1)
+  }
+}
+
+cli
+  .command('remove [...names]', 'Remove packages from dependencies')
+  .alias('rm')
+  .option('--clean-catalog', 'Remove unused catalog entries')
+  .action(runRemove)
+
 cli.help()
 cli.version(version)
 cli.parse()
