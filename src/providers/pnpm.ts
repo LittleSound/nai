@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 import { parseDocument } from 'yaml'
+import { detectFromPackageJson } from '../detect.ts'
 import {
   readPackageItem,
   resolveWorkspacePackages,
@@ -16,9 +17,14 @@ const WORKSPACE_FILE = 'pnpm-workspace.yaml'
 export function createPnpmProvider(cwd = process.cwd()): Provider {
   return {
     name: 'pnpm',
+    catalogSupport: { minVersion: '9.5.0' },
     supportsPeerDependencies: true,
 
     checkExistence() {
+      const pmInfo = detectFromPackageJson(cwd)
+      if (pmInfo?.name === 'pnpm') {
+        return Promise.resolve({ exists: true, version: pmInfo.version })
+      }
       return Promise.resolve({
         exists: existsSync(join(cwd, LOCK_FILE)),
       })

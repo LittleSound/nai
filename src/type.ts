@@ -1,11 +1,14 @@
 export type Provider = {
   name: string
 
+  /** Catalog support info. `false` means the PM never supports catalogs. */
+  catalogSupport: { minVersion: string } | false
+
   /** Whether this package manager supports installing peer dependencies */
   supportsPeerDependencies: boolean
 
   /** Check if this package manager is used in the current project */
-  checkExistence: () => Promise<{ exists: boolean }>
+  checkExistence: () => Promise<{ exists: boolean; version?: string }>
 
   /**
    * List all defined catalogs.

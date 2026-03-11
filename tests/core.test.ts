@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   buildSummary,
+  checkCatalogSupport,
   findExistingEntries,
   getDepField,
   resolvePackageVersions,
 } from '../src/core.ts'
+import type { Provider } from '../src/type.ts'
 
 describe('findExistingEntries', () => {
   it('returns empty when dep not in any catalog', () => {
@@ -105,6 +107,77 @@ describe('buildSummary', () => {
       targetNames: ['app'],
     })
     expect(summary).toContain('→ catalog: (new)')
+  })
+})
+
+describe('checkCatalogSupport', () => {
+  const baseProvider = {
+    supportsPeerDependencies: true,
+    checkExistence: vi.fn(),
+    listCatalogs: vi.fn(),
+    listPackages: vi.fn(),
+    depInstallExecutor: vi.fn(),
+  } satisfies Omit<Provider, 'name' | 'catalogSupport'>
+
+  it('returns supported when catalogSupport is set and no version', () => {
+    const result = checkCatalogSupport({
+      ...baseProvider,
+      name: 'pnpm',
+      catalogSupport: { minVersion: '9.5.0' },
+    })
+    expect(result.supported).toBe(true)
+  })
+
+  it('returns supported when version >= minVersion', () => {
+    const result = checkCatalogSupport(
+      {
+        ...baseProvider,
+        name: 'pnpm',
+        catalogSupport: { minVersion: '9.5.0' },
+      },
+      '10.31.0',
+    )
+    expect(result.supported).toBe(true)
+  })
+
+  it('returns version-too-low when version < minVersion', () => {
+    const result = checkCatalogSupport(
+      {
+        ...baseProvider,
+        name: 'pnpm',
+        catalogSupport: { minVersion: '9.5.0' },
+      },
+      '9.4.0',
+    )
+    expect(result).toEqual({
+      supported: false,
+      reason: 'version-too-low',
+      minVersion: '9.5.0',
+    })
+  })
+
+  it('returns unsupported when catalogSupport is false', () => {
+    const result = checkCatalogSupport({
+      ...baseProvider,
+      name: 'npm',
+      catalogSupport: false,
+    })
+    expect(result).toEqual({
+      supported: false,
+      reason: 'unsupported',
+    })
+  })
+
+  it('returns supported when version equals minVersion', () => {
+    const result = checkCatalogSupport(
+      {
+        ...baseProvider,
+        name: 'yarn',
+        catalogSupport: { minVersion: '4.10.0' },
+      },
+      '4.10.0',
+    )
+    expect(result.supported).toBe(true)
   })
 })
 

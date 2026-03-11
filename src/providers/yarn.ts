@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 import { parseDocument } from 'yaml'
+import { detectFromPackageJson } from '../detect.ts'
 import {
   readPackageItem,
   resolveWorkspacePackages,
@@ -16,9 +17,14 @@ const CONFIG_FILE = '.yarnrc.yml'
 export function createYarnProvider(cwd = process.cwd()): Provider {
   return {
     name: 'yarn',
+    catalogSupport: { minVersion: '4.10.0' },
     supportsPeerDependencies: true,
 
     checkExistence() {
+      const pmInfo = detectFromPackageJson(cwd)
+      if (pmInfo?.name === 'yarn') {
+        return Promise.resolve({ exists: true, version: pmInfo.version })
+      }
       return Promise.resolve({
         exists: existsSync(join(cwd, LOCK_FILE)),
       })

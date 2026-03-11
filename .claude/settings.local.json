@@ -32,7 +32,8 @@
       "Bash(pnpm test:*)",
       "Bash(npx tsdown:*)",
       "Bash(npx tsx:*)",
-      "Bash(pnpm add:*)"
+      "Bash(pnpm add:*)",
+      "Bash(pnpm run:*)"
     ],
     "deny": [],
     "ask": []

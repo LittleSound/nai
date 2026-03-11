@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { resetDetectCache } from '../../src/detect.ts'
 import { createPnpmProvider } from '../../src/providers/pnpm.ts'
 
 let tempDir: string
@@ -12,6 +13,7 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(tempDir, { recursive: true, force: true })
+  resetDetectCache()
 })
 
 const DEFAULT_PKG = { name: 'test-pkg' }
@@ -34,6 +36,23 @@ describe('pnpm provider', () => {
       const provider = createPnpmProvider(tempDir)
       const { exists } = await provider.checkExistence()
       expect(exists).toBe(true)
+    })
+
+    it('detects from packageManager field and returns version', async () => {
+      writePkg(tempDir, { name: 'test', packageManager: 'pnpm@10.31.0' })
+      const provider = createPnpmProvider(tempDir)
+      const { exists, version } = await provider.checkExistence()
+      expect(exists).toBe(true)
+      expect(version).toBe('10.31.0')
+    })
+
+    it('does not return version when detected via lock file', async () => {
+      writePkg(tempDir)
+      writeFileSync(join(tempDir, 'pnpm-lock.yaml'), '')
+      const provider = createPnpmProvider(tempDir)
+      const { exists, version } = await provider.checkExistence()
+      expect(exists).toBe(true)
+      expect(version).toBeUndefined()
     })
   })
 

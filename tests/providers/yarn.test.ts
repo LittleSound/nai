@@ -8,6 +8,7 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { resetDetectCache } from '../../src/detect.ts'
 import { createYarnProvider } from '../../src/providers/yarn.ts'
 
 let tempDir: string
@@ -18,6 +19,7 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(tempDir, { recursive: true, force: true })
+  resetDetectCache()
 })
 
 const DEFAULT_PKG = { name: 'test-pkg' }
@@ -39,6 +41,21 @@ describe('yarn provider', () => {
       const provider = createYarnProvider(tempDir)
       const { exists } = await provider.checkExistence()
       expect(exists).toBe(true)
+    })
+
+    it('detects from packageManager field and returns version', async () => {
+      writePkg(tempDir, { name: 'test', packageManager: 'yarn@4.10.0' })
+      const provider = createYarnProvider(tempDir)
+      const { exists, version } = await provider.checkExistence()
+      expect(exists).toBe(true)
+      expect(version).toBe('4.10.0')
+    })
+
+    it('does not match when packageManager is a different PM', async () => {
+      writePkg(tempDir, { name: 'test', packageManager: 'pnpm@10.31.0' })
+      const provider = createYarnProvider(tempDir)
+      const { exists } = await provider.checkExistence()
+      expect(exists).toBe(false)
     })
   })
 

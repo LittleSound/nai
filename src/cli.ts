@@ -5,16 +5,22 @@ import c from 'ansis'
 import cac from 'cac'
 import { getLatestVersion } from 'fast-npm-meta'
 import { version } from '../package.json'
-import { getDepField, resolvePackageVersions } from './core.ts'
+import {
+  checkCatalogSupport,
+  getDepField,
+  resolvePackageVersions,
+} from './core.ts'
 import { providers } from './providers/index.ts'
 import { parsePackageSpec, type ParsedPackage } from './utils.ts'
 import type { Provider } from './type.ts'
 
 /** Auto-detect the first available provider */
-async function detectProvider(): Promise<Provider | undefined> {
+async function detectProvider(): Promise<
+  { provider: Provider; version?: string } | undefined
+> {
   for (const provider of providers) {
-    const { exists } = await provider.checkExistence()
-    if (exists) return provider
+    const { exists, version } = await provider.checkExistence()
+    if (exists) return { provider, version }
   }
 }
 
@@ -35,10 +41,13 @@ async function run(
 
   // --- Detect or select package manager ---
   let provider: Provider
+  let pmVersion: string | undefined
   const detected = await detectProvider()
   if (detected) {
-    provider = detected
-    p.log.info(`Detected: ${provider.name}`)
+    provider = detected.provider
+    pmVersion = detected.version
+    const versionStr = pmVersion ? ` ${c.dim(`v${pmVersion}`)}` : ''
+    p.log.info(`Detected: ${c.bold(provider.name)}${versionStr}`)
   } else if (providers.length > 0) {
     const selectedName = guardCancel(
       await p.select({
@@ -73,8 +82,27 @@ async function run(
     packages = input.trim().split(/\s+/).map(parsePackageSpec)
   }
 
+  // --- Check catalog support ---
+  const catalogCheck = checkCatalogSupport(provider, pmVersion)
+  let catalogsEnabled = true
+
+  if (!catalogCheck.supported) {
+    if (catalogCheck.reason === 'unsupported') {
+      p.log.warn(
+        `${c.bold(provider.name)} does not support catalogs. Dependencies will be installed directly.`,
+      )
+    } else if (catalogCheck.reason === 'version-too-low') {
+      p.log.warn(
+        `${c.bold(provider.name)} ${c.dim(`v${pmVersion}`)} does not support catalogs (requires ${c.green(`>= ${catalogCheck.minVersion}`)}). Dependencies will be installed directly.`,
+      )
+    }
+    catalogsEnabled = false
+  }
+
   // --- Resolve versions (check existing catalogs first, then fetch) ---
-  const { catalogs } = await provider.listCatalogs()
+  const { catalogs } = catalogsEnabled
+    ? await provider.listCatalogs()
+    : { catalogs: {} }
 
   const resolved = await resolvePackageVersions(packages, {
     catalogs,
@@ -128,7 +156,7 @@ async function run(
 
   // --- Select catalog for new packages (ones not reusing an existing entry) ---
   const newDeps = resolved.filter((d) => !d.existsInCatalog)
-  if (newDeps.length > 0) {
+  if (catalogsEnabled && newDeps.length > 0) {
     const catalogNames = Object.keys(catalogs)
     let targetCatalog: string | null
 

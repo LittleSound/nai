@@ -1,5 +1,5 @@
-import type { ResolvedDep } from './type.ts'
-import type { ParsedPackage } from './utils.ts'
+import { compareVersions, type ParsedPackage } from './utils.ts'
+import type { Provider, ResolvedDep } from './type.ts'
 
 export interface ExistingEntry {
   catalogName: string
@@ -56,6 +56,34 @@ export function buildSummary(options: {
 
   lines.push('', `Packages: ${options.targetNames.join(', ')}`)
   return lines.join('\n')
+}
+
+/**
+ * Check if a provider's catalog feature is supported at the detected version.
+ * Returns 'supported', 'unsupported' (PM never supports it), or 'version-too-low'.
+ */
+export function checkCatalogSupport(
+  provider: Provider,
+  version?: string,
+): {
+  supported: boolean
+  reason?: 'unsupported' | 'version-too-low'
+  minVersion?: string
+} {
+  if (provider.catalogSupport === false) {
+    return { supported: false, reason: 'unsupported' }
+  }
+  if (
+    version &&
+    compareVersions(version, provider.catalogSupport.minVersion) < 0
+  ) {
+    return {
+      supported: false,
+      reason: 'version-too-low',
+      minVersion: provider.catalogSupport.minVersion,
+    }
+  }
+  return { supported: true }
 }
 
 /**
