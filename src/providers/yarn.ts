@@ -10,12 +10,12 @@ import {
 } from './shared.ts'
 import type { DepInstallOptions, Provider } from '../type.ts'
 
-const LOCK_FILE = 'pnpm-lock.yaml'
-const WORKSPACE_FILE = 'pnpm-workspace.yaml'
+const LOCK_FILE = 'yarn.lock'
+const CONFIG_FILE = '.yarnrc.yml'
 
-export function createPnpmProvider(cwd = process.cwd()): Provider {
+export function createYarnProvider(cwd = process.cwd()): Provider {
   return {
-    name: 'pnpm',
+    name: 'yarn',
     supportsPeerDependencies: true,
 
     checkExistence() {
@@ -26,10 +26,10 @@ export function createPnpmProvider(cwd = process.cwd()): Provider {
 
     listCatalogs() {
       const catalogs: Record<string, Record<string, string>> = {}
-      const workspacePath = join(cwd, WORKSPACE_FILE)
-      if (!existsSync(workspacePath)) return Promise.resolve({ catalogs })
+      const configPath = join(cwd, CONFIG_FILE)
+      if (!existsSync(configPath)) return Promise.resolve({ catalogs })
 
-      const raw = parseDocument(readFileSync(workspacePath, 'utf8')).toJSON()
+      const raw = parseDocument(readFileSync(configPath, 'utf8')).toJSON()
       if (!raw || typeof raw !== 'object') return Promise.resolve({ catalogs })
 
       // Default catalog (singular `catalog` key)
@@ -57,13 +57,9 @@ export function createPnpmProvider(cwd = process.cwd()): Provider {
       if (existsSync(rootPkgPath)) {
         const pkg = JSON.parse(readFileSync(rootPkgPath, 'utf8'))
         packages.push(readPackageItem(pkg, cwd))
-      }
 
-      // Workspace packages from pnpm-workspace.yaml
-      const workspacePath = join(cwd, WORKSPACE_FILE)
-      if (existsSync(workspacePath)) {
-        const raw = parseDocument(readFileSync(workspacePath, 'utf8')).toJSON()
-        const patterns = raw?.packages as string[] | undefined
+        // Workspace packages from package.json "workspaces" field
+        const patterns = pkg.workspaces as string[] | undefined
         if (patterns && patterns.length > 0) {
           packages.push(...resolveWorkspacePackages(cwd, patterns))
         }
@@ -74,16 +70,16 @@ export function createPnpmProvider(cwd = process.cwd()): Provider {
 
     depInstallExecutor(options: DepInstallOptions) {
       const log = options.logger ?? (() => {})
-      const workspacePath = join(cwd, WORKSPACE_FILE)
+      const configPath = join(cwd, CONFIG_FILE)
 
-      // 1. Write new catalog entries to pnpm-workspace.yaml
+      // 1. Write new catalog entries to .yarnrc.yml
       const newCatalogDeps = options.deps.filter(
         (d) => d.catalogName != null && !d.existsInCatalog,
       )
 
       if (newCatalogDeps.length > 0) {
-        const content = existsSync(workspacePath)
-          ? readFileSync(workspacePath, 'utf8')
+        const content = existsSync(configPath)
+          ? readFileSync(configPath, 'utf8')
           : ''
         const doc = parseDocument(content)
 
@@ -95,8 +91,8 @@ export function createPnpmProvider(cwd = process.cwd()): Provider {
           }
         }
 
-        writeFileSync(workspacePath, doc.toString(), 'utf8')
-        log(`Writing ${WORKSPACE_FILE}`)
+        writeFileSync(configPath, doc.toString(), 'utf8')
+        log(`Writing ${CONFIG_FILE}`)
       }
 
       // 2. Update package.json for each target package
@@ -121,16 +117,15 @@ export function createPnpmProvider(cwd = process.cwd()): Provider {
                 : `catalog:${dep.catalogName}`
         }
 
-        // Sort deps alphabetically
         pkg[depField] = sortObject(pkg[depField])
 
         writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, 'utf8')
         log(`Writing ${pkgPath}`)
       }
 
-      // 3. Run pnpm install
-      log('Running pnpm install')
-      execFileSync('pnpm', ['install'], { cwd, stdio: 'inherit' })
+      // 3. Run yarn install
+      log('Running yarn install')
+      execFileSync('yarn', ['install'], { cwd, stdio: 'inherit' })
 
       return Promise.resolve()
     },

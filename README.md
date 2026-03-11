@@ -84,8 +84,10 @@ catalogs:
 | Package Manager | Status |
 |---|---|
 | pnpm | ✅ Supported |
-| yarn | 🚧 Planned |
+| yarn | ✅ Supported |
 | bun | 🚧 Planned |
+| vlt | 🚧 Planned |
+| npm | 🚧 Planned |
 
 ## 📄 License
 
