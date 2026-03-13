@@ -297,6 +297,9 @@ export function createBunProvider(cwd = process.cwd()): Provider {
       log('Running bun install')
       execFileSync('bun', ['install'], { cwd, stdio: 'inherit' })
 
+      return Promise.resolve()
+    },
+
     install() {
       execFileSync('bun', ['install'], { cwd, stdio: 'inherit' })
       return Promise.resolve()

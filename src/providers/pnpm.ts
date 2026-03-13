@@ -206,6 +206,9 @@ export function createPnpmProvider(cwd = process.cwd()): Provider {
       log('Running pnpm install')
       execFileSync('pnpm', ['install'], { cwd, stdio: 'inherit' })
 
+      return Promise.resolve()
+    },
+
     install() {
       execFileSync('pnpm', ['install'], { cwd, stdio: 'inherit' })
       return Promise.resolve()
