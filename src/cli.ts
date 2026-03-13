@@ -11,7 +11,7 @@ import {
   resolvePackageVersions,
 } from './core.ts'
 import { providers } from './providers/index.ts'
-import { promptPackages } from './search.ts'
+import { getCachedVersion, promptPackages } from './search.ts'
 import { parsePackageSpec, type ParsedPackage } from './utils.ts'
 import type { Provider } from './type.ts'
 
@@ -132,6 +132,15 @@ async function run(
       return { catalogName, version }
     },
     async onFetchVersion(depName) {
+      const infoMsg = (name: string, version: string) =>
+        `Resolved ${c.cyan(name)}@${c.green(`^${version}`)}`
+
+      const cached = getCachedVersion(depName)
+      if (cached) {
+        p.log.info(infoMsg(depName, cached))
+        return `^${cached}`
+      }
+
       const s = p.spinner()
       s.start(`Resolving ${c.cyan(depName)} from npm...`)
       try {
@@ -143,7 +152,7 @@ async function run(
           )
           return null
         }
-        s.stop(`Resolved ${c.cyan(depName)}@${c.green(`^${meta.version}`)}`)
+        s.stop(infoMsg(depName, meta.version))
         return `^${meta.version}`
       } catch (error) {
         s.stop(`Failed to fetch ${c.cyan(depName)}`)

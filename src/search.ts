@@ -28,6 +28,14 @@ export async function searchNpmPackages(
   return data.objects.map((o) => o.package)
 }
 
+/** Cache of package versions collected during search, keyed by package name. */
+const versionCache = new Map<string, string>()
+
+/** Look up a cached version from a previous search. */
+export function getCachedVersion(name: string): string | undefined {
+  return versionCache.get(name)
+}
+
 /** Interactive package search with dynamic npm results. Returns null on cancel. */
 export async function promptPackages(): Promise<ParsedPackage[] | null> {
   let searchResults: SearchOption[] = []
@@ -77,6 +85,7 @@ export async function promptPackages(): Promise<ParsedPackage[] | null> {
             const results = await searchNpmPackages(input)
             if (lastSearchTerm !== input) return
 
+            for (const pkg of results) versionCache.set(pkg.name, pkg.version)
             const exactMatch = results.find((pkg) => pkg.name === input)
             searchResults = results
               .filter((pkg) => pkg.name !== input)
