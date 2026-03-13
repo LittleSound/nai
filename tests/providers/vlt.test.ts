@@ -28,10 +28,7 @@ function writePkg(dir: string, pkg: Record<string, unknown> = DEFAULT_PKG) {
   writeFileSync(join(dir, 'package.json'), JSON.stringify(pkg, null, 2))
 }
 
-function writeConfig(
-  dir: string,
-  config: Record<string, unknown>,
-) {
+function writeConfig(dir: string, config: Record<string, unknown>) {
   writeFileSync(join(dir, 'vlt.json'), JSON.stringify(config, null, 2))
 }
 
@@ -219,9 +216,7 @@ describe('vlt provider', () => {
         // vlt install may fail in test env
       }
 
-      const config = JSON.parse(
-        readFileSync(join(tempDir, 'vlt.json'), 'utf8'),
-      )
+      const config = JSON.parse(readFileSync(join(tempDir, 'vlt.json'), 'utf8'))
       expect(config.catalogs.prod.react).toBe('^19.0.0')
 
       const pkg = JSON.parse(
@@ -248,9 +243,7 @@ describe('vlt provider', () => {
         // vlt install may fail in test env
       }
 
-      const config = JSON.parse(
-        readFileSync(join(tempDir, 'vlt.json'), 'utf8'),
-      )
+      const config = JSON.parse(readFileSync(join(tempDir, 'vlt.json'), 'utf8'))
       expect(config.catalog.lodash).toBe('^4.17.21')
 
       const pkg = JSON.parse(
@@ -276,9 +269,7 @@ describe('vlt provider', () => {
         // vlt install may fail in test env
       }
 
-      const config = JSON.parse(
-        readFileSync(join(tempDir, 'vlt.json'), 'utf8'),
-      )
+      const config = JSON.parse(readFileSync(join(tempDir, 'vlt.json'), 'utf8'))
       expect(config.catalogs.ui.react).toBe('^19.0.0')
     })
 
@@ -310,9 +301,7 @@ describe('vlt provider', () => {
 
       try {
         await provider.depInstallExecutor({
-          deps: [
-            { name: 'typescript', version: '^5.0.0', catalogName: 'dev' },
-          ],
+          deps: [{ name: 'typescript', version: '^5.0.0', catalogName: 'dev' }],
           targetPackages: [tempDir],
           dev: true,
           peer: false,
@@ -355,9 +344,7 @@ describe('vlt provider', () => {
         // vlt install may fail in test env
       }
 
-      const config = JSON.parse(
-        readFileSync(join(tempDir, 'vlt.json'), 'utf8'),
-      )
+      const config = JSON.parse(readFileSync(join(tempDir, 'vlt.json'), 'utf8'))
       expect(config.catalogs).toEqual({ prod: { react: '^18.3.1' } })
 
       const pkg = JSON.parse(
@@ -442,9 +429,7 @@ describe('vlt provider', () => {
         // vlt install may fail in test env
       }
 
-      const config = JSON.parse(
-        readFileSync(join(tempDir, 'vlt.json'), 'utf8'),
-      )
+      const config = JSON.parse(readFileSync(join(tempDir, 'vlt.json'), 'utf8'))
       const keys = Object.keys(config.catalog)
       expect(keys).toEqual(['axios', 'zod'])
     })

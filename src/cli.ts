@@ -10,6 +10,7 @@ import {
   getDepField,
   resolvePackageVersions,
 } from './core.ts'
+import { searchPrompt, type SearchOption } from './prompts/search.ts'
 import { providers } from './providers/index.ts'
 import { searchNpmPackages } from './search.ts'
 import { parsePackageSpec, type ParsedPackage } from './utils.ts'
@@ -36,50 +37,29 @@ function guardCancel<T>(value: T | symbol): T {
 
 /** Interactive package search with dynamic results */
 async function promptPackages(): Promise<ParsedPackage[]> {
-  type Option = { value: string; label: string; hint?: string }
-
-  let searchResults: Option[] = []
+  let searchResults: SearchOption[] = []
   let lastSearchTerm = ''
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
-
-  let promptRef: any = null
-
-  /**
-   * Auto-select the focused item when Enter is pressed with nothing selected.
-   * Uses prependListener so it fires BEFORE @clack's handler sets this.value.
-   */
-  const autoSelectOnEnter = (_ch: unknown, key: { name?: string }) => {
-    if (
-      key?.name === 'return' &&
-      promptRef &&
-      promptRef.selectedValues.length === 0 &&
-      promptRef.focusedValue != null
-    ) {
-      promptRef.selectedValues = [promptRef.focusedValue]
-    }
-  }
-  process.stdin.prependListener('keypress', autoSelectOnEnter)
+  const searchLoading = { value: false }
 
   const selected = guardCancel(
-    await p.autocompleteMultiselect({
+    await searchPrompt({
       message: 'Package names to install',
       required: true,
       options() {
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
-        promptRef = this
         const input = (this.userInput ?? '').trim()
 
         if (!input) {
           lastSearchTerm = ''
           searchResults = []
+          searchLoading.value = false
           if (debounceTimer) clearTimeout(debounceTimer)
           return []
         }
 
         const isPackageName = !input.includes(' ')
-        const opts: Option[] = []
+        const opts: SearchOption[] = []
 
-        // First option: exact input (only when it looks like a package name)
         if (isPackageName) {
           opts.push({
             value: input,
@@ -88,17 +68,21 @@ async function promptPackages(): Promise<ParsedPackage[]> {
           })
         }
 
-        // Trigger debounced npm search when input changes
         if (input !== lastSearchTerm) {
           lastSearchTerm = input
           searchResults = []
           if (debounceTimer) clearTimeout(debounceTimer)
 
+          // eslint-disable-next-line @typescript-eslint/no-this-alias
+          const self = this
           debounceTimer = setTimeout(async () => {
+            searchLoading.value = true
+            process.stdin.emit('keypress', '', { name: '' })
             try {
               const results = await searchNpmPackages(input)
               if (lastSearchTerm !== input) return
 
+              const exactMatch = results.find((pkg) => pkg.name === input)
               searchResults = results
                 .filter((pkg) => pkg.name !== input)
                 .map((pkg) => ({
@@ -111,26 +95,23 @@ async function promptPackages(): Promise<ParsedPackage[]> {
                     : undefined,
                 }))
 
-              // Find exact match to enrich the direct option
-              const exactMatch = results.find((pkg) => pkg.name === input)
-
-              if (promptRef) {
-                const updatedOpts: Option[] = []
-                if (isPackageName) {
-                  updatedOpts.push({
-                    value: input,
-                    label: exactMatch
-                      ? `${c.cyan(input)} ${c.blue(`v${exactMatch.version}`)}`
-                      : c.cyan(input),
-                    hint: 'add directly',
-                  })
-                }
-                updatedOpts.push(...searchResults)
-                promptRef.filteredOptions = updatedOpts
-                process.stdin.emit('keypress', '', { name: '' })
+              const updatedOpts: SearchOption[] = []
+              if (isPackageName) {
+                updatedOpts.push({
+                  value: input,
+                  label: exactMatch
+                    ? `${c.cyan(input)} ${c.blue(`v${exactMatch.version}`)}`
+                    : c.cyan(input),
+                  hint: 'add directly',
+                })
               }
+              updatedOpts.push(...searchResults)
+              self.filteredOptions = updatedOpts
+              process.stdin.emit('keypress', '', { name: '' })
             } catch {
               // Search failed silently — direct option still works
+            } finally {
+              searchLoading.value = false
             }
           }, 300)
         }
@@ -139,10 +120,10 @@ async function promptPackages(): Promise<ParsedPackage[]> {
         return opts
       },
       filter: () => true,
+      loading: searchLoading,
     }),
   )
 
-  process.stdin.removeListener('keypress', autoSelectOnEnter)
   if (debounceTimer) clearTimeout(debounceTimer)
   return (selected as string[]).map(parsePackageSpec)
 }

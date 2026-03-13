@@ -314,9 +314,7 @@ describe('npm provider', () => {
       const rootPkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
       )
-      const aPkg = JSON.parse(
-        readFileSync(join(pkgA, 'package.json'), 'utf8'),
-      )
+      const aPkg = JSON.parse(readFileSync(join(pkgA, 'package.json'), 'utf8'))
       expect(rootPkg.dependencies.lodash).toBe('^4.17.21')
       expect(aPkg.dependencies.lodash).toBe('^4.17.21')
     })

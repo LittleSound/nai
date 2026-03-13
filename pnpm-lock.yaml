@@ -10,6 +10,9 @@ catalogs:
       specifier: ^0.21.1
       version: 0.21.1
   prod:
+    '@clack/core':
+      specifier: ^1.1.0
+      version: 1.1.0
     '@clack/prompts':
       specifier: ^1.1.0
       version: 1.1.0
@@ -30,6 +33,9 @@ importers:
 
   .:
     dependencies:
+      '@clack/core':
+        specifier: catalog:prod
+        version: 1.1.0
       '@clack/prompts':
         specifier: catalog:prod
         version: 1.1.0

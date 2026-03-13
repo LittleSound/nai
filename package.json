@@ -45,6 +45,7 @@
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
+    "@clack/core": "catalog:prod",
     "@clack/prompts": "catalog:prod",
     "ansis": "catalog:prod",
     "cac": "catalog:prod",

@@ -4,6 +4,7 @@ catalogs:
   dev:
     tsdown: ^0.21.1
   prod:
+    '@clack/core': ^1.1.0
     '@clack/prompts': ^1.1.0
     ansis: ^4.2.0
     cac: ^7.0.0

@@ -6,7 +6,6 @@ An interactive CLI that makes installing dependencies easy — with first-class 
 
 <img height="500" alt="Ghostty 2026-03-11 01 32 41" src="https://github.com/user-attachments/assets/83d164f3-8a13-41f1-a453-23ffd81ed387" />
 
-
 ## 📦 Install
 
 ```bash
@@ -81,13 +80,13 @@ catalogs:
 
 ## 🛠️ Supported Package Managers
 
-| Package Manager | Catalog Support | Status |
-|---|---|---|
-| pnpm | ✅ `pnpm-workspace.yaml` | ✅ Supported |
-| yarn | ✅ `.yarnrc.yml` | ✅ Supported |
-| bun | ✅ `package.json` | ✅ Supported |
-| vlt | ✅ `vlt.json` | ✅ Supported |
-| npm | ❌ | ✅ Supported (no catalog) |
+| Package Manager | Catalog Support          | Status                    |
+| --------------- | ------------------------ | ------------------------- |
+| pnpm            | ✅ `pnpm-workspace.yaml` | ✅ Supported              |
+| yarn            | ✅ `.yarnrc.yml`         | ✅ Supported              |
+| bun             | ✅ `package.json`        | ✅ Supported              |
+| vlt             | ✅ `vlt.json`            | ✅ Supported              |
+| npm             | ❌                       | ✅ Supported (no catalog) |
 
 ## 📄 License
 

@@ -18,9 +18,7 @@ const CONFIG_FILE = 'vlt.json'
  * Normalize the flexible vlt workspaces format into a flat pattern list.
  * vlt.json `workspaces` accepts: string | string[] | Record<string, string[]>
  */
-function getWorkspacePatterns(
-  workspaces: unknown,
-): string[] {
+function getWorkspacePatterns(workspaces: unknown): string[] {
   if (typeof workspaces === 'string') return [workspaces]
   if (Array.isArray(workspaces)) return workspaces as string[]
   if (workspaces && typeof workspaces === 'object') {
