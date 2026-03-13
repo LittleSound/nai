@@ -34,6 +34,8 @@ export interface SearchPromptOptions<T = string> {
   loading?: { value: boolean }
   /** Called when user presses Ctrl+O on a focused option. */
   onOpen?: (value: T) => void
+  /** Hint shown when input is empty. When set, allows empty submission. */
+  placeholder?: string
 }
 
 /**
@@ -52,7 +54,11 @@ export async function searchPrompt<T = string>(
     multiple: true,
     filter: opts.filter,
     validate: () => {
-      if (opts.required && prompt.selectedValues.length === 0)
+      if (
+        opts.required &&
+        prompt.selectedValues.length === 0 &&
+        (prompt.userInput ?? '').trim()
+      )
         return 'Please select at least one item'
     },
     render(this: AutocompletePrompt<SearchOption<T>>) {
@@ -87,7 +93,11 @@ export async function searchPrompt<T = string>(
       switch (this.state) {
         case 'submit': {
           const header = `${styleText('gray', S_BAR)}\n${symbol(this.state)}  ${opts.message}`
-          return `${header}\n${styleText('gray', S_BAR)}  ${styleText('dim', `${selectedCount} selected`)}`
+          const submitInfo =
+            selectedCount > 0
+              ? `${selectedCount} selected`
+              : (opts.placeholder ?? '0 selected')
+          return `${header}\n${styleText('gray', S_BAR)}  ${styleText('dim', submitInfo)}`
         }
         case 'cancel': {
           const header = `${styleText('gray', S_BAR)}\n${symbol(this.state)}  ${opts.message}`
@@ -132,6 +142,10 @@ export async function searchPrompt<T = string>(
               : `${checkbox} ${styleText('dim', label)}`
           }
 
+          const placeholderLine =
+            !input && opts.placeholder
+              ? [`${bar}  ${styleText('dim', opts.placeholder)}`]
+              : []
           const noMatches =
             this.filteredOptions.length === 0 && input
               ? [`${bar}  ${styleText('yellow', 'No matches found')}`]
@@ -144,6 +158,7 @@ export async function searchPrompt<T = string>(
           const top = [
             ...header.split('\n'),
             `${bar}  ${searchInput}${matchInfo}`,
+            ...placeholderLine,
             ...noMatches,
             ...errorLines,
           ]

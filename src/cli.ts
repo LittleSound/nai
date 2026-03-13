@@ -81,6 +81,19 @@ async function run(
       p.cancel('Operation cancelled.')
       process.exit(0)
     }
+
+    // install all dependencies
+    if (result === 'install') {
+      p.log.step(`Running ${c.bold(provider.name)} install`)
+      try {
+        await provider.install()
+      } catch (error) {
+        p.log.error(error instanceof Error ? error.message : String(error))
+        process.exit(1)
+      }
+      return
+    }
+
     packages = result
     if (packages.length === 0) {
       p.log.error('No packages to install.')

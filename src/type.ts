@@ -30,6 +30,9 @@ export type Provider = {
    * and running install in its own way.
    */
   depInstallExecutor: (options: DepInstallOptions) => Promise<void>
+
+  /** Run bare install (e.g. `pnpm install`) without adding new dependencies */
+  install: () => Promise<void>
 }
 
 export type DepInstallOptions = {

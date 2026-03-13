@@ -81,5 +81,10 @@ export function createNpmProvider(cwd = process.cwd()): Provider {
 
       return Promise.resolve()
     },
+
+    install() {
+      execFileSync('npm', ['install'], { cwd, stdio: 'inherit' })
+      return Promise.resolve()
+    },
   }
 }

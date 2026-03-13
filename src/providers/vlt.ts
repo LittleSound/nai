@@ -168,5 +168,10 @@ export function createVltProvider(cwd = process.cwd()): Provider {
 
       return Promise.resolve()
     },
+
+    install() {
+      execFileSync('vlt', ['install'], { cwd, stdio: 'inherit' })
+      return Promise.resolve()
+    },
   }
 }

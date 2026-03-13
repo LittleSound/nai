@@ -137,5 +137,10 @@ export function createYarnProvider(cwd = process.cwd()): Provider {
 
       return Promise.resolve()
     },
+
+    install() {
+      execFileSync('yarn', ['install'], { cwd, stdio: 'inherit' })
+      return Promise.resolve()
+    },
   }
 }

@@ -36,8 +36,10 @@ export function getCachedVersion(name: string): string | undefined {
   return versionCache.get(name)
 }
 
-/** Interactive package search with dynamic npm results. Returns null on cancel. */
-export async function promptPackages(): Promise<ParsedPackage[] | null> {
+/** Interactive package search with dynamic npm results. Returns 'install' for bare install, null on cancel. */
+export async function promptPackages(): Promise<
+  ParsedPackage[] | 'install' | null
+> {
   let searchResults: SearchOption[] = []
   let lastSearchTerm = ''
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -46,6 +48,7 @@ export async function promptPackages(): Promise<ParsedPackage[] | null> {
   const selected = await searchPrompt({
     message: 'Package names to install',
     required: true,
+    placeholder: 'or Enter to install all dependencies',
     onOpen(name) {
       openInBrowser(`https://www.npmjs.com/package/${encodeURIComponent(name)}`)
     },
@@ -129,5 +132,7 @@ export async function promptPackages(): Promise<ParsedPackage[] | null> {
 
   if (debounceTimer) clearTimeout(debounceTimer)
   if (typeof selected === 'symbol') return null
-  return (selected as string[]).map(parsePackageSpec)
+  const names = selected as string[]
+  if (names.length === 0) return 'install'
+  return names.map(parsePackageSpec)
 }
