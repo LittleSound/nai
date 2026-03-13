@@ -146,7 +146,7 @@ async function run(
     },
     async onFetchVersion(depName) {
       const infoMsg = (name: string, version: string) =>
-        `Resolved ${c.cyan(name)}@${c.green(`^${version}`)}`
+        `${c.cyan(name)}@${c.green(`^${version}`)}`
 
       const cached = getCachedVersion(depName)
       if (cached) {
