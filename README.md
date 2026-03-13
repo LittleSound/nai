@@ -16,19 +16,28 @@ npm i -g @rizumu/nai
 
 ```bash
 # Interactive mode — prompts for everything
-nai
+nai add
 
-# Pass package names directly
+# Pass package names directly (two ways)
 nai react vue@^3.5 lodash
+nai add react vue@^3.5 lodash
 
 # Install as devDependencies
-nai vitest -D
+nai add vitest -D
 
 # Install as peerDependencies
-nai react --peer
+nai add react --peer
 
 # Specify a catalog
-nai zod -C prod
+nai add zod -C prod
+
+# Update packages to latest versions
+nai update
+nai up react lodash
+
+# Manage catalogs
+nai catalog
+nai catalog --list
 ```
 
 Run `nai --help` for all available options.
@@ -54,6 +63,44 @@ Too many flags. Too many files to touch. Too many things to remember.
 5. 🏷️ **Choose dep type** — `dependencies` / `devDependencies` / `peerDependencies`
 6. ✅ **Review & confirm** — colorful summary before any file is changed
 7. 🚀 **Install** — writes config files and runs install for you
+
+## 📋 Commands
+
+| Command | Alias | Description |
+|---------|-------|-------------|
+| `nai [packages]` | `nai add` | Install packages interactively |
+| `nai update [packages]` | `nai up` | Update packages to latest versions |
+| `nai remove [packages]` | `nai rm` | Remove packages from dependencies |
+| `nai catalog` | - | Browse and manage catalog versions |
+
+### 📦 Update
+
+Check and update outdated packages:
+
+```bash
+# Check all packages for updates
+nai update
+
+# Update specific packages
+nai update react lodash
+
+# Interactive mode
+nai update -i
+```
+
+### 🗂️ Catalog
+
+Browse catalogs and change dependency versions:
+
+```bash
+# Interactive catalog browser
+nai catalog
+
+# List all catalogs
+nai catalog --list
+```
+
+Select packages within a catalog and choose new versions from npm.
 
 ## 🗂️ What is a Catalog?
 

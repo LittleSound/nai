@@ -9,7 +9,7 @@ import {
   sortObject,
   writePeerDependenciesMeta,
 } from './shared.ts'
-import type { DepInstallOptions, Provider } from '../type.ts'
+import type { DepInstallOptions, DepRemoveOptions, Provider } from '../type.ts'
 
 const LOCK_FILES = ['bun.lock', 'bun.lockb']
 
@@ -199,6 +199,101 @@ export function createBunProvider(cwd = process.cwd()): Provider {
       }
 
       // 3. Run bun install
+      log('Running bun install')
+      execFileSync('bun', ['install'], { cwd, stdio: 'inherit' })
+
+      return Promise.resolve()
+    },
+
+    depRemoveExecutor(options: DepRemoveOptions) {
+      const log = options.logger ?? (() => {})
+      const rootPkgPath = join(cwd, 'package.json')
+
+      // 1. Remove dependencies from each target package.json
+      for (const dir of options.targetPackages) {
+        const pkgPath = join(dir, 'package.json')
+        const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
+        let modified = false
+
+        for (const depName of options.packageNames) {
+          for (const depField of [
+            'dependencies',
+            'devDependencies',
+            'peerDependencies',
+          ] as const) {
+            if (pkg[depField] && depName in pkg[depField]) {
+              delete pkg[depField][depName]
+              modified = true
+            }
+          }
+        }
+
+        if (modified) {
+          writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, 'utf8')
+          log(`Updating ${pkgPath}`)
+        }
+      }
+
+      // 2. Clean up unused catalog entries in root package.json if requested
+      if (options.cleanCatalog && existsSync(rootPkgPath)) {
+        const rootPkg = JSON.parse(readFileSync(rootPkgPath, 'utf8'))
+        const source = readCatalogSource(rootPkg)
+        let modified = false
+
+        if (source) {
+          for (const depName of options.packageNames) {
+            // Remove from default catalog
+            const defaultCatalog = source.catalog as
+              | Record<string, string>
+              | undefined
+            if (defaultCatalog && depName in defaultCatalog) {
+              delete defaultCatalog[depName]
+              modified = true
+            }
+            // Remove from named catalogs
+            if (source.catalogs && typeof source.catalogs === 'object') {
+              const catalogs = source.catalogs as Record<
+                string,
+                Record<string, string>
+              >
+              for (const catalogName of Object.keys(catalogs)) {
+                const catalog = catalogs[catalogName]
+                if (catalog && depName in catalog) {
+                  delete catalog[depName]
+                  modified = true
+                }
+              }
+            }
+          }
+
+          // Sort catalog entries after removal
+          if (source.catalog) {
+            source.catalog = sortObject(
+              source.catalog as Record<string, string>,
+            )
+          }
+          if (source.catalogs) {
+            const catalogs = source.catalogs as Record<
+              string,
+              Record<string, string>
+            >
+            for (const name of Object.keys(catalogs)) {
+              catalogs[name] = sortObject(catalogs[name])
+            }
+          }
+        }
+
+        if (modified) {
+          writeFileSync(
+            rootPkgPath,
+            `${JSON.stringify(rootPkg, null, 2)}\n`,
+            'utf8',
+          )
+          log('Cleaning catalog entries in package.json')
+        }
+      }
+
+      // 3. Run bun install to update lockfile
       log('Running bun install')
       execFileSync('bun', ['install'], { cwd, stdio: 'inherit' })
 

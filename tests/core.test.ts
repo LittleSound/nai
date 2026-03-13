@@ -117,6 +117,7 @@ describe('checkCatalogSupport', () => {
     listCatalogs: vi.fn(),
     listPackages: vi.fn(),
     depInstallExecutor: vi.fn(),
+    depRemoveExecutor: vi.fn(),
     install: vi.fn(),
   } satisfies Omit<Provider, 'name' | 'catalogSupport'>
 

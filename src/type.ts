@@ -31,6 +31,12 @@ export type Provider = {
    */
   depInstallExecutor: (options: DepInstallOptions) => Promise<void>
 
+  /**
+   * Execute the dependency removal flow.
+   * Each provider handles catalog cleanup, package.json updates,
+   * and running install in its own way.
+   */
+  depRemoveExecutor: (options: DepRemoveOptions) => Promise<void>
   /** Run bare install (e.g. `pnpm install`) without adding new dependencies */
   install: () => Promise<void>
 }
@@ -43,6 +49,17 @@ export type DepInstallOptions = {
   peer: boolean
   /** Whether to mark peer dependencies as optional in peerDependenciesMeta */
   peerOptional: boolean
+  /** Log progress messages during execution */
+  logger?: (message: string) => void
+}
+
+export type DepRemoveOptions = {
+  /** Package names to remove */
+  packageNames: string[]
+  /** Target package directories to remove dependencies from */
+  targetPackages: string[]
+  /** Whether to also remove unused catalog entries */
+  cleanCatalog?: boolean
   /** Log progress messages during execution */
   logger?: (message: string) => void
 }
@@ -62,4 +79,5 @@ export type RepoPackageItem = {
   description: string
   dependencies: Record<string, string>
   devDependencies: Record<string, string>
+  peerDependencies: Record<string, string>
 }

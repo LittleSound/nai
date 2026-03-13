@@ -13,6 +13,7 @@ export function readPackageItem(
     description: (pkg.description as string) || '',
     dependencies: (pkg.dependencies as Record<string, string>) || {},
     devDependencies: (pkg.devDependencies as Record<string, string>) || {},
+    peerDependencies: (pkg.peerDependencies as Record<string, string>) || {},
   }
 }
 
