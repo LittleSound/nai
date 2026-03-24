@@ -11,6 +11,7 @@ import {
   resolvePackageVersions,
 } from './core.ts'
 import { detectProvider } from './detect.ts'
+import { commandOverviewText } from './help.ts'
 import { providers } from './providers/index.ts'
 import { getCachedVersion, promptPackages } from './search.ts'
 import { parsePackageSpec, type ParsedPackage } from './utils.ts'
@@ -354,6 +355,11 @@ cli
   .option('-C, --catalog <name>', 'Specify catalog name')
   .action(run)
 
-cli.help()
+cli.help((sections) => {
+  sections.push({
+    body: commandOverviewText(),
+  })
+  return sections
+})
 cli.version(version)
 cli.parse()

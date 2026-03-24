@@ -40,7 +40,7 @@ export function buildScriptOptions(
     value: entry,
     label:
       isMonorepo && !entry.isRoot
-        ? `${c.dim(entry.packageName)} ${c.dim('>')} ${entry.scriptName}`
+        ? `${c.magenta(entry.packageName)} ${c.dim('>')} ${entry.scriptName}`
         : entry.scriptName,
     hint: entry.command,
   }))

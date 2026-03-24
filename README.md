@@ -2,7 +2,9 @@
 
 > **n**pm **a**dd, **i**nteractive ✨
 
-An interactive CLI that makes installing dependencies easy — with first-class **catalog** support.
+> Interactive CLI tools for managing packages and scripts ✨
+
+A suite of interactive CLI commands that make dependency installation and script running easy — with first-class **catalog** support and automatic package manager detection.
 
 <img height="500" alt="Ghostty 2026-03-11 01 32 41" src="https://github.com/user-attachments/assets/83d164f3-8a13-41f1-a453-23ffd81ed387" />
 
@@ -12,10 +14,18 @@ An interactive CLI that makes installing dependencies easy — with first-class 
 npm i -g @rizumu/nai
 ```
 
-## 🚀 Usage
+## 🚀 Commands
+
+| Command | Description |
+| ------- | ----------- |
+| `nai`   | Install packages (interactive) |
+| `nar`   | Run scripts (interactive) |
+
+## nai — install packages
 
 ```bash
 # Interactive mode — prompts for everything
+# Press Enter twice to install all dependencies
 nai
 
 # Pass package names directly
@@ -32,6 +42,23 @@ nai zod -C prod
 ```
 
 Run `nai --help` for all available options.
+
+## nar — run scripts
+
+```bash
+# Interactive mode — fuzzy search and pick a script, including monorepo scripts
+nar
+
+# Run a script directly (like npm run)
+nar dev
+
+# Forward arguments to the script
+nar dev --port 3000
+```
+
+In **monorepo** projects, `nar` lists scripts from all workspace packages with fuzzy search across script names and package names. Root scripts are listed first.
+
+Run `nar --help` for all available options.
 
 ## 💡 Why nai?
 

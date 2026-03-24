@@ -5,13 +5,43 @@ import c from 'ansis'
 import { byLengthAsc, Fzf } from 'fzf'
 import { version } from '../../package.json'
 import { detectProvider } from '../detect.ts'
+import { commandOverviewText } from '../help.ts'
 import { selectSearchPrompt } from '../prompts/select-search.ts'
 import { providers } from '../providers/index.ts'
 import { buildScriptOptions, collectScripts, type ScriptEntry } from './core.ts'
 import type { SearchOption } from '../prompts/search.ts'
 
+function printHelp(): void {
+  console.log(
+    [
+      `nar v${version}`,
+      '',
+      String(c.bold('Usage')),
+      `  ${c.green('nar')}                    Interactive script selection`,
+      `  ${c.green('nar')} ${c.dim('<script>')}          Run a script directly`,
+      `  ${c.green('nar')} ${c.dim('<script> [args]')}   Run a script with extra arguments`,
+      '',
+      String(c.bold('Options')),
+      `  ${c.green('-h, --help')}           Show this help message`,
+      `  ${c.green('-v, --version')}        Show version`,
+    ].join('\n'),
+  )
+
+  console.log(commandOverviewText())
+}
+
 async function run() {
   const rawArgs = process.argv.slice(2)
+
+  if (rawArgs.includes('--help') || rawArgs.includes('-h')) {
+    printHelp()
+    return
+  }
+
+  if (rawArgs.includes('--version') || rawArgs.includes('-v')) {
+    console.log(`nar v${version}`)
+    return
+  }
 
   // --- Detect provider ---
   const detected = await detectProvider(providers)
