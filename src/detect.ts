@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import type { Provider } from './type.ts'
 
 export interface PackageManagerInfo {
   name: string
@@ -65,4 +66,14 @@ function readPackageManagerInfo(cwd: string): PackageManagerInfo | null {
 /** Reset the cache (for testing) */
 export function resetDetectCache(): void {
   cache = undefined
+}
+
+/** Auto-detect the first available provider from the given list */
+export async function detectProvider(
+  providers: Provider[],
+): Promise<{ provider: Provider; version?: string } | undefined> {
+  for (const provider of providers) {
+    const { exists, version } = await provider.checkExistence()
+    if (exists) return { provider, version }
+  }
 }

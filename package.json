@@ -18,11 +18,13 @@
   "exports": {
     ".": "./dist/index.mjs",
     "./cli": "./dist/cli.mjs",
+    "./nar/cli": "./dist/nar/cli.mjs",
     "./package.json": "./package.json"
   },
   "types": "./dist/index.d.mts",
   "bin": {
-    "nai": "./dist/cli.mjs"
+    "nai": "./dist/cli.mjs",
+    "nar": "./dist/nar/cli.mjs"
   },
   "files": [
     "dist"
@@ -38,6 +40,7 @@
     "lint:fix": "pnpm run lint --fix",
     "build": "tsdown",
     "dev": "tsx src/cli.ts",
+    "nar": "tsx src/nar/cli.ts",
     "test": "vitest",
     "typecheck": "tsgo --noEmit",
     "format": "prettier --cache --write .",
@@ -50,6 +53,7 @@
     "ansis": "catalog:prod",
     "cac": "catalog:prod",
     "fast-npm-meta": "catalog:prod",
+    "fzf": "catalog:prod",
     "yaml": "catalog:prod"
   },
   "devDependencies": {

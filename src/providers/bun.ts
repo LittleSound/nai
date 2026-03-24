@@ -9,7 +9,7 @@ import {
   sortObject,
   writePeerDependenciesMeta,
 } from './shared.ts'
-import type { DepInstallOptions, Provider } from '../type.ts'
+import type { DepInstallOptions, Provider, RunScriptOptions } from '../type.ts'
 
 const LOCK_FILES = ['bun.lock', 'bun.lockb']
 
@@ -207,6 +207,16 @@ export function createBunProvider(cwd = process.cwd()): Provider {
 
     install() {
       execFileSync('bun', ['install'], { cwd, stdio: 'inherit' })
+      return Promise.resolve()
+    },
+
+    runScript(options: RunScriptOptions) {
+      const args = ['run', options.scriptName, ...(options.args ?? [])]
+      options.logger?.(`bun ${args.join(' ')}`)
+      execFileSync('bun', args, {
+        cwd: options.cwd ?? cwd,
+        stdio: 'inherit',
+      })
       return Promise.resolve()
     },
   }

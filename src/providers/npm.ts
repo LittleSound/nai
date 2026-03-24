@@ -9,7 +9,7 @@ import {
   sortObject,
   writePeerDependenciesMeta,
 } from './shared.ts'
-import type { DepInstallOptions, Provider } from '../type.ts'
+import type { DepInstallOptions, Provider, RunScriptOptions } from '../type.ts'
 
 const LOCK_FILE = 'package-lock.json'
 
@@ -84,6 +84,21 @@ export function createNpmProvider(cwd = process.cwd()): Provider {
 
     install() {
       execFileSync('npm', ['install'], { cwd, stdio: 'inherit' })
+      return Promise.resolve()
+    },
+
+    runScript(options: RunScriptOptions) {
+      const extra = options.args ?? []
+      const args = [
+        'run',
+        options.scriptName,
+        ...(extra.length > 0 ? ['--', ...extra] : []),
+      ]
+      options.logger?.(`npm ${args.join(' ')}`)
+      execFileSync('npm', args, {
+        cwd: options.cwd ?? cwd,
+        stdio: 'inherit',
+      })
       return Promise.resolve()
     },
   }

@@ -1,3 +1,27 @@
+/**
+ * Abstraction for a package manager.
+ *
+ * Design principle — deep modules with simple interfaces:
+ *
+ * 1. **Actions execute internally.** Every method that performs an action
+ *    (depInstallExecutor, install, runScript) owns the full execution.
+ *    Callers never need to know which binary to spawn, how arguments are
+ *    assembled, or which separator a PM requires. Do NOT return a command
+ *    tuple for the caller to execute — that leaks implementation details
+ *    and forces every call site to duplicate spawn/exit-code logic.
+ *
+ * 2. **Use `logger` for caller-visible output.** When the caller needs to
+ *    display what is happening, pass a `logger` callback in the options
+ *    object. The provider decides *what* to log and *when*; the caller
+ *    decides *how* to display it. Avoid lifecycle-specific hooks like
+ *    `onBeforeRun` — they couple the caller to the provider's internal
+ *    execution steps. A single generic `logger` is more composable and
+ *    survives refactors that change the execution order.
+ *
+ * 3. **Options objects over positional args.** Methods that accept
+ *    configuration use a single options object so new fields can be added
+ *    without breaking existing call sites.
+ */
 export type Provider = {
   name: string
 
@@ -33,6 +57,13 @@ export type Provider = {
 
   /** Run bare install (e.g. `pnpm install`) without adding new dependencies */
   install: () => Promise<void>
+
+  /**
+   * Run a package.json script through this package manager.
+   * Handles PM-specific argument forwarding (e.g. npm requires `--` before
+   * extra args) and spawns the process with inherited stdio.
+   */
+  runScript: (options: RunScriptOptions) => Promise<void>
 }
 
 export type DepInstallOptions = {
@@ -56,10 +87,22 @@ export type ResolvedDep = {
   existsInCatalog?: boolean
 }
 
+export type RunScriptOptions = {
+  /** Script name from package.json "scripts" */
+  scriptName: string
+  /** Extra arguments forwarded to the script */
+  args?: string[]
+  /** Working directory to run the script in */
+  cwd?: string
+  /** Log progress messages during execution */
+  logger?: (message: string) => void
+}
+
 export type RepoPackageItem = {
   name: string
   directory: string
   description: string
   dependencies: Record<string, string>
   devDependencies: Record<string, string>
+  scripts: Record<string, string>
 }

@@ -9,7 +9,7 @@ import {
   sortObject,
   writePeerDependenciesMeta,
 } from './shared.ts'
-import type { DepInstallOptions, Provider } from '../type.ts'
+import type { DepInstallOptions, Provider, RunScriptOptions } from '../type.ts'
 
 const LOCK_FILE = 'vlt-lock.json'
 const CONFIG_FILE = 'vlt.json'
@@ -171,6 +171,16 @@ export function createVltProvider(cwd = process.cwd()): Provider {
 
     install() {
       execFileSync('vlt', ['install'], { cwd, stdio: 'inherit' })
+      return Promise.resolve()
+    },
+
+    runScript(options: RunScriptOptions) {
+      const args = ['run', options.scriptName, ...(options.args ?? [])]
+      options.logger?.(`vlt ${args.join(' ')}`)
+      execFileSync('vlt', args, {
+        cwd: options.cwd ?? cwd,
+        stdio: 'inherit',
+      })
       return Promise.resolve()
     },
   }

@@ -9,6 +9,7 @@ catalogs:
     ansis: ^4.2.0
     cac: ^7.0.0
     fast-npm-meta: ^1.4.2
+    fzf: ^0.5.2
     yaml: ^2.7.0
 allowBuilds:
   esbuild: false

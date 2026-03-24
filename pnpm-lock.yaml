@@ -25,6 +25,9 @@ catalogs:
     fast-npm-meta:
       specifier: ^1.4.2
       version: 1.4.2
+    fzf:
+      specifier: ^0.5.2
+      version: 0.5.2
     yaml:
       specifier: ^2.7.0
       version: 2.8.2
@@ -48,6 +51,9 @@ importers:
       fast-npm-meta:
         specifier: catalog:prod
         version: 1.4.2
+      fzf:
+        specifier: catalog:prod
+        version: 0.5.2
       yaml:
         specifier: catalog:prod
         version: 2.8.2
@@ -1460,6 +1466,9 @@ packages:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+
+  fzf@0.5.2:
+    resolution: {integrity: sha512-Tt4kuxLXFKHy8KT40zwsUPUkg1CrsgY25FxA2U/j/0WgEDCk3ddc/zLTCCcbSHX9FcKtLuVaDGtGE/STWC+j3Q==}
 
   get-tsconfig@4.13.6:
     resolution: {integrity: sha512-shZT/QMiSHc/YBLxxOkMtgSid5HFoauqCE3/exfsEcwg1WkeqjG+V40yBbBrsD+jW2HDXcs28xOfcbm2jI8Ddw==}
@@ -3466,6 +3475,8 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  fzf@0.5.2: {}
 
   get-tsconfig@4.13.6:
     dependencies:

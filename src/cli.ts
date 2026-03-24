@@ -10,20 +10,11 @@ import {
   getDepField,
   resolvePackageVersions,
 } from './core.ts'
+import { detectProvider } from './detect.ts'
 import { providers } from './providers/index.ts'
 import { getCachedVersion, promptPackages } from './search.ts'
 import { parsePackageSpec, type ParsedPackage } from './utils.ts'
 import type { Provider } from './type.ts'
-
-/** Auto-detect the first available provider */
-async function detectProvider(): Promise<
-  { provider: Provider; version?: string } | undefined
-> {
-  for (const provider of providers) {
-    const { exists, version } = await provider.checkExistence()
-    if (exists) return { provider, version }
-  }
-}
 
 /** Guard against user cancellation (Ctrl+C) */
 function guardCancel<T>(value: T | symbol): T {
@@ -48,7 +39,7 @@ async function run(
   // --- Detect or select package manager ---
   let provider: Provider
   let pmVersion: string | undefined
-  const detected = await detectProvider()
+  const detected = await detectProvider(providers)
   if (detected) {
     provider = detected.provider
     pmVersion = detected.version

@@ -118,6 +118,7 @@ describe('checkCatalogSupport', () => {
     listPackages: vi.fn(),
     depInstallExecutor: vi.fn(),
     install: vi.fn(),
+    runScript: vi.fn(),
   } satisfies Omit<Provider, 'name' | 'catalogSupport'>
 
   it('returns supported when catalogSupport is set and no version', () => {

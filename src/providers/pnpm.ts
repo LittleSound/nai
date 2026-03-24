@@ -10,7 +10,7 @@ import {
   sortObject,
   writePeerDependenciesMeta,
 } from './shared.ts'
-import type { DepInstallOptions, Provider } from '../type.ts'
+import type { DepInstallOptions, Provider, RunScriptOptions } from '../type.ts'
 
 const LOCK_FILE = 'pnpm-lock.yaml'
 const WORKSPACE_FILE = 'pnpm-workspace.yaml'
@@ -145,6 +145,16 @@ export function createPnpmProvider(cwd = process.cwd()): Provider {
 
     install() {
       execFileSync('pnpm', ['install'], { cwd, stdio: 'inherit' })
+      return Promise.resolve()
+    },
+
+    runScript(options: RunScriptOptions) {
+      const args = ['run', options.scriptName, ...(options.args ?? [])]
+      options.logger?.(`pnpm ${args.join(' ')}`)
+      execFileSync('pnpm', args, {
+        cwd: options.cwd ?? cwd,
+        stdio: 'inherit',
+      })
       return Promise.resolve()
     },
   }

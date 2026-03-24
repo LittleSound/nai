@@ -10,7 +10,7 @@ import {
   sortObject,
   writePeerDependenciesMeta,
 } from './shared.ts'
-import type { DepInstallOptions, Provider } from '../type.ts'
+import type { DepInstallOptions, Provider, RunScriptOptions } from '../type.ts'
 
 const LOCK_FILE = 'yarn.lock'
 const CONFIG_FILE = '.yarnrc.yml'
@@ -140,6 +140,16 @@ export function createYarnProvider(cwd = process.cwd()): Provider {
 
     install() {
       execFileSync('yarn', ['install'], { cwd, stdio: 'inherit' })
+      return Promise.resolve()
+    },
+
+    runScript(options: RunScriptOptions) {
+      const args = ['run', options.scriptName, ...(options.args ?? [])]
+      options.logger?.(`yarn ${args.join(' ')}`)
+      execFileSync('yarn', args, {
+        cwd: options.cwd ?? cwd,
+        stdio: 'inherit',
+      })
       return Promise.resolve()
     },
   }

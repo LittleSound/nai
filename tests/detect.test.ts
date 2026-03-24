@@ -4,9 +4,11 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   detectFromPackageJson,
+  detectProvider,
   parsePackageManagerField,
   resetDetectCache,
 } from '../src/detect.ts'
+import type { Provider } from '../src/type.ts'
 
 describe('parsePackageManagerField', () => {
   it('parses name and version', () => {
@@ -129,5 +131,47 @@ describe('detectFromPackageJson', () => {
       JSON.stringify({ name: 'test' }),
     )
     expect(detectFromPackageJson(tempDir)).toBeNull()
+  })
+})
+
+describe('detectProvider', () => {
+  function makeProvider(
+    name: string,
+    exists: boolean,
+    version?: string,
+  ): Provider {
+    return {
+      name,
+      catalogSupport: false,
+      supportsPeerDependencies: false,
+      checkExistence: () => Promise.resolve({ exists, version }),
+      listCatalogs: () => Promise.resolve({ catalogs: {} }),
+      listPackages: () => Promise.resolve({ packages: [] }),
+      depInstallExecutor: () => Promise.resolve(),
+      install: () => Promise.resolve(),
+      runScript: () => Promise.resolve(),
+    }
+  }
+
+  it('returns the first available provider', async () => {
+    const providers = [
+      makeProvider('pnpm', false),
+      makeProvider('yarn', true, '4.10.0'),
+      makeProvider('npm', true),
+    ]
+    const result = await detectProvider(providers)
+    expect(result?.provider.name).toBe('yarn')
+    expect(result?.version).toBe('4.10.0')
+  })
+
+  it('returns undefined when no provider matches', async () => {
+    const providers = [makeProvider('pnpm', false), makeProvider('npm', false)]
+    const result = await detectProvider(providers)
+    expect(result).toBeUndefined()
+  })
+
+  it('returns undefined for empty list', async () => {
+    const result = await detectProvider([])
+    expect(result).toBeUndefined()
   })
 })
