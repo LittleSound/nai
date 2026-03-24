@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { buildScriptOptions, collectScripts } from '../../src/nar/core.ts'
+import { highlightPositions } from '../../src/highlight.ts'
+import {
+  buildHighlightedOptions,
+  buildScriptOptions,
+  collectScripts,
+  type ScriptEntry,
+} from '../../src/nar/core.ts'
 import type { RepoPackageItem } from '../../src/type.ts'
 
 // eslint-disable-next-line no-control-regex
@@ -155,5 +161,100 @@ describe('buildScriptOptions', () => {
   it('returns empty array for empty input', () => {
     expect(buildScriptOptions([], false)).toEqual([])
     expect(buildScriptOptions([], true)).toEqual([])
+  })
+})
+
+describe('highlightPositions (via shared highlight module)', () => {
+  it('highlights characters at matched positions', () => {
+    const result = highlightPositions('dev', new Set([0, 2]), 0)
+    expect(strip(result)).toBe('dev')
+    expect(result).not.toBe('dev')
+  })
+
+  it('returns plain text when no positions match', () => {
+    expect(highlightPositions('dev', new Set([10, 20]), 0)).toBe('dev')
+  })
+
+  it('applies offset correctly', () => {
+    const result = highlightPositions('dev', new Set([5, 6]), 5)
+    expect(strip(result)).toBe('dev')
+    expect(result).not.toBe('dev')
+  })
+
+  it('returns empty string for empty text', () => {
+    expect(highlightPositions('', new Set([0]), 0)).toBe('')
+  })
+})
+
+describe('buildHighlightedOptions', () => {
+  function makeFzfResult(entry: ScriptEntry, positions: number[]) {
+    return {
+      item: entry,
+      positions: new Set(positions),
+      start: 0,
+      end: 0,
+      score: 100,
+    }
+  }
+
+  const rootEntry: ScriptEntry = {
+    scriptName: 'dev',
+    command: 'vite',
+    packageName: 'root',
+    cwd: '/workspace/root',
+    isRoot: true,
+  }
+  const wsEntry: ScriptEntry = {
+    scriptName: 'build',
+    command: 'tsdown',
+    packageName: '@scope/pkg-a',
+    cwd: '/workspace/pkg-a',
+    isRoot: false,
+  }
+
+  it('highlights script name in single-package mode', () => {
+    // selector: "dev vite", position 0 = 'd'
+    const results = [makeFzfResult(rootEntry, [0])]
+    const options = buildHighlightedOptions(results, false)
+
+    expect(strip(options[0].label)).toBe('dev')
+    // 'd' should be highlighted
+    expect(options[0].label).not.toBe('dev')
+  })
+
+  it('highlights command in hint', () => {
+    // selector: "dev vite", positions 4,5,6,7 = 'vite'
+    const results = [makeFzfResult(rootEntry, [4, 5, 6, 7])]
+    const options = buildHighlightedOptions(results, false)
+
+    expect(strip(options[0].hint!)).toBe('vite')
+    expect(options[0].hint).not.toBe('vite')
+  })
+
+  it('highlights package name in monorepo mode', () => {
+    // selector: "build @scope/pkg-a tsdown"
+    // packageName starts at offset 6, '@' = position 6
+    const results = [makeFzfResult(wsEntry, [6])]
+    const options = buildHighlightedOptions(results, true)
+
+    expect(strip(options[0].label)).toBe('@scope/pkg-a > build')
+    // Label should contain highlighting ANSI codes beyond normal styling
+    expect(options[0].label.length).toBeGreaterThan(
+      '@scope/pkg-a > build'.length,
+    )
+  })
+
+  it('does not prefix package name for root scripts in monorepo', () => {
+    const results = [makeFzfResult(rootEntry, [0])]
+    const options = buildHighlightedOptions(results, true)
+
+    expect(strip(options[0].label)).toBe('dev')
+  })
+
+  it('preserves ScriptEntry as value', () => {
+    const results = [makeFzfResult(rootEntry, [])]
+    const options = buildHighlightedOptions(results, false)
+
+    expect(options[0].value).toBe(rootEntry)
   })
 })
