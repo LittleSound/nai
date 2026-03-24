@@ -1,8 +1,8 @@
 import c from 'ansis'
+import type { FzfResultItem } from 'fzf'
 import { highlightPositions } from '../highlight.ts'
 import type { SearchOption } from '../prompts/search.ts'
 import type { RepoPackageItem } from '../type.ts'
-import type { FzfResultItem } from 'fzf'
 
 export interface ScriptEntry {
   scriptName: string
@@ -11,6 +11,42 @@ export interface ScriptEntry {
   cwd: string
   /** Whether this script belongs to the root package (first in listPackages) */
   isRoot: boolean
+}
+
+export interface ScriptGroupMarker {
+  kind: 'group'
+  id: string
+  label: string
+}
+
+export type ScriptOptionValue = ScriptEntry | ScriptGroupMarker
+
+const ROOT_GROUP_ID = '__root__'
+
+function getGroupId(entry: ScriptEntry): string {
+  return entry.isRoot ? ROOT_GROUP_ID : entry.packageName
+}
+
+function getGroupLabel(entry: ScriptEntry): string {
+  return entry.isRoot ? 'Root scripts' : entry.packageName
+}
+
+export function getScriptGroupOrder(scripts: ScriptEntry[]): string[] {
+  const seen = new Set<string>()
+  const order: string[] = []
+
+  for (const entry of scripts) {
+    const groupId = getGroupId(entry)
+    if (seen.has(groupId)) continue
+    seen.add(groupId)
+    order.push(groupId)
+  }
+
+  return order
+}
+
+export function isScriptEntry(value: ScriptOptionValue): value is ScriptEntry {
+  return 'scriptName' in value
 }
 
 /**
@@ -33,78 +69,130 @@ export function collectScripts(packages: RepoPackageItem[]): ScriptEntry[] {
   return entries
 }
 
-/** Build search options from script entries, prefixing package name for non-root in monorepos */
+/** Build grouped search options for monorepos, with root scripts listed first. */
 export function buildScriptOptions(
   scripts: ScriptEntry[],
   isMonorepo: boolean,
-): SearchOption<ScriptEntry>[] {
-  return scripts.map((entry) => buildOption(entry, isMonorepo))
+  groupOrder: string[] = getScriptGroupOrder(scripts),
+): SearchOption<ScriptOptionValue>[] {
+  if (!isMonorepo) {
+    return scripts.map((entry) => ({
+      value: entry,
+      label: entry.scriptName,
+      hint: entry.command,
+    }))
+  }
+
+  const groups = new Map<string, SearchOption<ScriptOptionValue>[]>()
+  const groupLabels = new Map<string, string>()
+
+  for (const entry of scripts) {
+    const groupId = getGroupId(entry)
+    if (!groups.has(groupId)) groups.set(groupId, [])
+    groupLabels.set(groupId, getGroupLabel(entry))
+    groups.get(groupId)!.push({
+      value: entry,
+      label: entry.scriptName,
+      hint: entry.command,
+    })
+  }
+
+  const orderedGroupIds = [
+    ...groupOrder.filter((groupId) => groups.has(groupId)),
+    ...[...groups.keys()].filter((groupId) => !groupOrder.includes(groupId)),
+  ]
+
+  return orderedGroupIds.flatMap((groupId) => {
+    const label = groupLabels.get(groupId) ?? groupId
+    return [
+      {
+        value: { kind: 'group', id: groupId, label },
+        label: c.bold(label),
+        disabled: true,
+      },
+      ...groups.get(groupId)!,
+    ]
+  })
 }
 
 /**
- * Build highlighted search options from fzf results.
- * Maps fzf positions back to label/hint parts based on the selector layout.
- *
+ * Build highlighted search options from fzf results while preserving monorepo grouping.
  * Selector layout (monorepo): `${scriptName} ${packageName} ${command}`
  * Selector layout (single):   `${scriptName} ${command}`
  */
 export function buildHighlightedOptions(
   results: FzfResultItem<ScriptEntry>[],
   isMonorepo: boolean,
-): SearchOption<ScriptEntry>[] {
-  return results.map((r) => {
-    const entry = r.item
-    const pos = r.positions
+  groupOrder: string[] = getScriptGroupOrder(results.map((result) => result.item)),
+): SearchOption<ScriptOptionValue>[] {
+  if (!isMonorepo) {
+    return results.map((result) => buildHighlightedOption(result, false))
+  }
 
-    const sLen = entry.scriptName.length
-    const pLen = entry.packageName.length
+  const groups = new Map<string, SearchOption<ScriptOptionValue>[]>()
+  const groupLabels = new Map<string, string>()
 
-    // Map selector offsets to display parts
-    const scriptOffset = 0
-    const commandOffset = isMonorepo ? sLen + 1 + pLen + 1 : sLen + 1
+  for (const result of results) {
+    const entry = result.item
+    const groupId = getGroupId(entry)
 
-    const highlightedScript = highlightPositions(
-      entry.scriptName,
-      pos,
-      scriptOffset,
-    )
-    const highlightedCommand = highlightPositions(
-      entry.command,
-      pos,
-      commandOffset,
-    )
-
-    let label: string
-    if (isMonorepo && !entry.isRoot) {
-      const pkgOffset = sLen + 1
-      const highlightedPkg = highlightPositions(
-        entry.packageName,
-        pos,
-        pkgOffset,
-      )
-      label = `${c.magenta(highlightedPkg)} ${c.dim('>')} ${highlightedScript}`
-    } else {
-      label = highlightedScript
+    if (!groups.has(groupId)) groups.set(groupId, [])
+    if (!groupLabels.has(groupId)) {
+      groupLabels.set(groupId, buildHighlightedGroupLabel(result))
     }
 
-    return {
-      value: entry,
-      label,
-      hint: highlightedCommand,
-    }
+    groups.get(groupId)!.push(buildHighlightedOption(result, true))
+  }
+
+  const orderedGroupIds = [
+    ...groupOrder.filter((groupId) => groups.has(groupId)),
+    ...[...groups.keys()].filter((groupId) => !groupOrder.includes(groupId)),
+  ]
+
+  return orderedGroupIds.flatMap((groupId) => {
+    const label = groupLabels.get(groupId) ?? groupId
+    return [
+      {
+        value: {
+          kind: 'group',
+          id: groupId,
+          label: stripAnsi(label),
+        },
+        label: c.bold(label),
+        disabled: true,
+      },
+      ...groups.get(groupId)!,
+    ]
   })
 }
 
-function buildOption(
-  entry: ScriptEntry,
+function buildHighlightedOption(
+  result: FzfResultItem<ScriptEntry>,
   isMonorepo: boolean,
-): SearchOption<ScriptEntry> {
+): SearchOption<ScriptOptionValue> {
+  const entry = result.item
+  const positions = result.positions
+
+  const scriptOffset = 0
+  const commandOffset = isMonorepo
+    ? entry.scriptName.length + 1 + entry.packageName.length + 1
+    : entry.scriptName.length + 1
+
   return {
     value: entry,
-    label:
-      isMonorepo && !entry.isRoot
-        ? `${c.magenta(entry.packageName)} ${c.dim('>')} ${entry.scriptName}`
-        : entry.scriptName,
-    hint: entry.command,
+    label: highlightPositions(entry.scriptName, positions, scriptOffset),
+    hint: highlightPositions(entry.command, positions, commandOffset),
   }
+}
+
+function buildHighlightedGroupLabel(result: FzfResultItem<ScriptEntry>): string {
+  const entry = result.item
+  if (entry.isRoot) return 'Root scripts'
+
+  const packageOffset = entry.scriptName.length + 1
+  return highlightPositions(entry.packageName, result.positions, packageOffset)
+}
+
+function stripAnsi(text: string): string {
+  return text.replaceAll(/\u001B\[[\d;]*m/g, '')
 }

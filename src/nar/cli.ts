@@ -12,7 +12,10 @@ import {
   buildHighlightedOptions,
   buildScriptOptions,
   collectScripts,
+  getScriptGroupOrder,
+  isScriptEntry,
   type ScriptEntry,
+  type ScriptOptionValue,
 } from './core.ts'
 
 function printHelp(): void {
@@ -82,7 +85,8 @@ async function run() {
   }
 
   const isMonorepo = packages.length > 1
-  const allOptions = buildScriptOptions(scripts, isMonorepo)
+  const groupOrder = getScriptGroupOrder(scripts)
+  const allOptions = buildScriptOptions(scripts, isMonorepo, groupOrder)
 
   /** Tiebreaker: root scripts rank higher than workspace scripts */
   const byRootFirst = (
@@ -98,12 +102,12 @@ async function run() {
     tiebreakers: [byRootFirst, byLengthAsc],
   })
 
-  const selected = await selectSearchPrompt<ScriptEntry>({
+  const selected = await selectSearchPrompt<ScriptOptionValue>({
     message: 'Run a script',
     options() {
       const input = (this.userInput ?? '').trim()
       if (!input) return allOptions
-      return buildHighlightedOptions(fzf.find(input), isMonorepo)
+      return buildHighlightedOptions(fzf.find(input), isMonorepo, groupOrder)
     },
     filter: () => true,
   })
@@ -113,7 +117,12 @@ async function run() {
     process.exit(0)
   }
 
-  const entry = selected as ScriptEntry
+  if (!isScriptEntry(selected)) {
+    p.log.error('Please choose a runnable script.')
+    process.exit(1)
+  }
+
+  const entry: ScriptEntry = selected
 
   try {
     await provider.runScript({

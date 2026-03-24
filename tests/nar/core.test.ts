@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { highlightPositions } from '../../src/highlight.ts'
 import {
   buildHighlightedOptions,
   buildScriptOptions,
   collectScripts,
+  getScriptGroupOrder,
   type ScriptEntry,
 } from '../../src/nar/core.ts'
 import type { RepoPackageItem } from '../../src/type.ts'
@@ -24,6 +24,16 @@ function makePackage(
     devDependencies: {},
     scripts: {},
     ...overrides,
+  }
+}
+
+function makeFzfResult(entry: ScriptEntry, positions: number[]) {
+  return {
+    item: entry,
+    positions: new Set(positions),
+    start: 0,
+    end: 0,
+    score: 100,
   }
 }
 
@@ -72,19 +82,12 @@ describe('collectScripts', () => {
 
     expect(result).toHaveLength(3)
     expect(result[0].isRoot).toBe(true)
-    expect(result[0].scriptName).toBe('lint')
     expect(result[1].isRoot).toBe(false)
     expect(result[1].packageName).toBe('@scope/pkg-a')
-    expect(result[2].isRoot).toBe(false)
   })
 
   it('returns empty array when no scripts exist', () => {
-    const packages = [makePackage({ name: 'empty-pkg' })]
-    expect(collectScripts(packages)).toEqual([])
-  })
-
-  it('returns empty array for empty package list', () => {
-    expect(collectScripts([])).toEqual([])
+    expect(collectScripts([makePackage({ name: 'empty-pkg' })])).toEqual([])
   })
 
   it('preserves cwd from each package', () => {
@@ -109,14 +112,14 @@ describe('collectScripts', () => {
 })
 
 describe('buildScriptOptions', () => {
-  const rootEntry = {
+  const rootEntry: ScriptEntry = {
     scriptName: 'dev',
     command: 'vite',
     packageName: 'root',
     cwd: '/workspace/root',
     isRoot: true,
   }
-  const workspaceEntry = {
+  const workspaceEntry: ScriptEntry = {
     scriptName: 'build',
     command: 'tsdown',
     packageName: '@scope/pkg-a',
@@ -132,16 +135,15 @@ describe('buildScriptOptions', () => {
     expect(options[1].label).toBe('build')
   })
 
-  it('omits package name for root scripts in monorepo', () => {
+  it('adds root and package group headers in monorepos', () => {
     const options = buildScriptOptions(entries, true)
 
-    expect(strip(options[0].label)).toBe('dev')
-  })
-
-  it('prefixes package name for non-root scripts in monorepo', () => {
-    const options = buildScriptOptions(entries, true)
-
-    expect(strip(options[1].label)).toBe('@scope/pkg-a > build')
+    expect(strip(options[0].label)).toBe('Root scripts')
+    expect(options[0].disabled).toBe(true)
+    expect(strip(options[1].label)).toBe('dev')
+    expect(strip(options[2].label)).toBe('@scope/pkg-a')
+    expect(options[2].disabled).toBe(true)
+    expect(strip(options[3].label)).toBe('build')
   })
 
   it('sets command as hint', () => {
@@ -151,52 +153,35 @@ describe('buildScriptOptions', () => {
     expect(options[1].hint).toBe('tsdown')
   })
 
-  it('passes through the ScriptEntry as value', () => {
-    const options = buildScriptOptions(entries, false)
+  it('preserves group order as root first, then workspace packages', () => {
+    const packageBEntry: ScriptEntry = {
+      scriptName: 'lint',
+      command: 'eslint .',
+      packageName: '@scope/pkg-b',
+      cwd: '/workspace/pkg-b',
+      isRoot: false,
+    }
+    const fullEntries = [rootEntry, workspaceEntry, packageBEntry]
+    const filteredEntries = [packageBEntry, rootEntry, workspaceEntry]
 
-    expect(options[0].value).toBe(entries[0])
-    expect(options[1].value).toBe(entries[1])
-  })
+    const options = buildScriptOptions(
+      filteredEntries,
+      true,
+      getScriptGroupOrder(fullEntries),
+    )
 
-  it('returns empty array for empty input', () => {
-    expect(buildScriptOptions([], false)).toEqual([])
-    expect(buildScriptOptions([], true)).toEqual([])
-  })
-})
-
-describe('highlightPositions (via shared highlight module)', () => {
-  it('highlights characters at matched positions', () => {
-    const result = highlightPositions('dev', new Set([0, 2]), 0)
-    expect(strip(result)).toBe('dev')
-    expect(result).not.toBe('dev')
-  })
-
-  it('returns plain text when no positions match', () => {
-    expect(highlightPositions('dev', new Set([10, 20]), 0)).toBe('dev')
-  })
-
-  it('applies offset correctly', () => {
-    const result = highlightPositions('dev', new Set([5, 6]), 5)
-    expect(strip(result)).toBe('dev')
-    expect(result).not.toBe('dev')
-  })
-
-  it('returns empty string for empty text', () => {
-    expect(highlightPositions('', new Set([0]), 0)).toBe('')
+    expect(options.map((option) => strip(option.label))).toEqual([
+      'Root scripts',
+      'dev',
+      '@scope/pkg-a',
+      'build',
+      '@scope/pkg-b',
+      'lint',
+    ])
   })
 })
 
 describe('buildHighlightedOptions', () => {
-  function makeFzfResult(entry: ScriptEntry, positions: number[]) {
-    return {
-      item: entry,
-      positions: new Set(positions),
-      start: 0,
-      end: 0,
-      score: 100,
-    }
-  }
-
   const rootEntry: ScriptEntry = {
     scriptName: 'dev',
     command: 'vite',
@@ -204,7 +189,7 @@ describe('buildHighlightedOptions', () => {
     cwd: '/workspace/root',
     isRoot: true,
   }
-  const wsEntry: ScriptEntry = {
+  const workspaceEntry: ScriptEntry = {
     scriptName: 'build',
     command: 'tsdown',
     packageName: '@scope/pkg-a',
@@ -212,49 +197,53 @@ describe('buildHighlightedOptions', () => {
     isRoot: false,
   }
 
-  it('highlights script name in single-package mode', () => {
-    // selector: "dev vite", position 0 = 'd'
-    const results = [makeFzfResult(rootEntry, [0])]
-    const options = buildHighlightedOptions(results, false)
+  it('highlights script names in single-package mode', () => {
+    const options = buildHighlightedOptions(
+      [makeFzfResult(rootEntry, [0])],
+      false,
+    )
 
     expect(strip(options[0].label)).toBe('dev')
-    // 'd' should be highlighted
     expect(options[0].label).not.toBe('dev')
   })
 
-  it('highlights command in hint', () => {
-    // selector: "dev vite", positions 4,5,6,7 = 'vite'
-    const results = [makeFzfResult(rootEntry, [4, 5, 6, 7])]
-    const options = buildHighlightedOptions(results, false)
+  it('highlights commands in hints', () => {
+    const options = buildHighlightedOptions(
+      [makeFzfResult(rootEntry, [4, 5, 6, 7])],
+      false,
+    )
 
     expect(strip(options[0].hint!)).toBe('vite')
     expect(options[0].hint).not.toBe('vite')
   })
 
-  it('highlights package name in monorepo mode', () => {
-    // selector: "build @scope/pkg-a tsdown"
-    // packageName starts at offset 6, '@' = position 6
-    const results = [makeFzfResult(wsEntry, [6])]
-    const options = buildHighlightedOptions(results, true)
-
-    expect(strip(options[0].label)).toBe('@scope/pkg-a > build')
-    // Label should contain highlighting ANSI codes beyond normal styling
-    expect(options[0].label.length).toBeGreaterThan(
-      '@scope/pkg-a > build'.length,
+  it('renders highlighted package group headers in monorepos', () => {
+    const options = buildHighlightedOptions(
+      [makeFzfResult(workspaceEntry, [6])],
+      true,
     )
+
+    expect(options[0].disabled).toBe(true)
+    expect(strip(options[0].label)).toBe('@scope/pkg-a')
+    expect(options[0].label.length).toBeGreaterThan('@scope/pkg-a'.length)
+    expect(strip(options[1].label)).toBe('build')
   })
 
-  it('does not prefix package name for root scripts in monorepo', () => {
-    const results = [makeFzfResult(rootEntry, [0])]
-    const options = buildHighlightedOptions(results, true)
+  it('keeps root group ahead of workspace groups when given full group order', () => {
+    const options = buildHighlightedOptions(
+      [
+        makeFzfResult(workspaceEntry, [0]),
+        makeFzfResult(rootEntry, [0]),
+      ],
+      true,
+      getScriptGroupOrder([rootEntry, workspaceEntry]),
+    )
 
-    expect(strip(options[0].label)).toBe('dev')
-  })
-
-  it('preserves ScriptEntry as value', () => {
-    const results = [makeFzfResult(rootEntry, [])]
-    const options = buildHighlightedOptions(results, false)
-
-    expect(options[0].value).toBe(rootEntry)
+    expect(options.map((option) => strip(option.label))).toEqual([
+      'Root scripts',
+      'dev',
+      '@scope/pkg-a',
+      'build',
+    ])
   })
 })

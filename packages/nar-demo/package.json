@@ -1,0 +1,10 @@
+{
+  "name": "@demo/nar-demo",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo child-package-dev",
+    "build": "echo child-package-build",
+    "lint": "echo child-package-lint"
+  }
+}
