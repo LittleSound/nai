@@ -14,6 +14,7 @@ import { detectProvider } from './detect.ts'
 import { commandOverviewText } from './help.ts'
 import { providers } from './providers/index.ts'
 import { getCachedVersion, promptPackages } from './search.ts'
+import { maybePromptForCliUpdate } from './update.ts'
 import { parsePackageSpec, type ParsedPackage } from './utils.ts'
 import type { Provider } from './type.ts'
 
@@ -61,6 +62,21 @@ async function run(
     p.log.error('No package manager providers available.')
     p.outro('Exiting')
     process.exit(1)
+  }
+
+  const updateResult = await maybePromptForCliUpdate({
+    toolName: 'nai',
+    providerName: provider.name,
+  })
+
+  if (updateResult === 'cancelled') {
+    p.cancel('Operation cancelled.')
+    process.exit(0)
+  }
+
+  if (updateResult === 'updated') {
+    p.outro('')
+    return
   }
 
   // --- Parse or prompt for package names ---
