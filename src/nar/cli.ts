@@ -8,8 +8,14 @@ import { detectProvider } from '../detect.ts'
 import { commandOverviewText } from '../help.ts'
 import { selectSearchPrompt } from '../prompts/select-search.ts'
 import { providers } from '../providers/index.ts'
-import { buildScriptOptions, collectScripts, type ScriptEntry } from './core.ts'
-import type { SearchOption } from '../prompts/search.ts'
+import {
+  buildScriptOptions,
+  collectScripts,
+  getScriptGroupOrder,
+  isScriptEntry,
+  type ScriptEntry,
+  type ScriptOptionValue,
+} from './core.ts'
 
 function printHelp(): void {
   console.log(
@@ -78,7 +84,8 @@ async function run() {
   }
 
   const isMonorepo = packages.length > 1
-  const allOptions = buildScriptOptions(scripts, isMonorepo)
+  const groupOrder = getScriptGroupOrder(scripts)
+  const allOptions = buildScriptOptions(scripts, isMonorepo, groupOrder)
 
   /** Tiebreaker: root scripts rank higher than workspace scripts */
   const byRootFirst = (
@@ -94,17 +101,16 @@ async function run() {
     tiebreakers: [byRootFirst, byLengthAsc],
   })
 
-  const optionMap = new Map(allOptions.map((opt) => [opt.value, opt]))
-
-  const selected = await selectSearchPrompt<ScriptEntry>({
+  const selected = await selectSearchPrompt<ScriptOptionValue>({
     message: 'Run a script',
     options() {
       const input = (this.userInput ?? '').trim()
       if (!input) return allOptions
-      const results = fzf.find(input)
-      return results
-        .map((r) => optionMap.get(r.item))
-        .filter((o): o is SearchOption<ScriptEntry> => o != null)
+      return buildScriptOptions(
+        fzf.find(input).map((result) => result.item),
+        isMonorepo,
+        groupOrder,
+      )
     },
     filter: () => true,
   })
@@ -114,7 +120,12 @@ async function run() {
     process.exit(0)
   }
 
-  const entry = selected as ScriptEntry
+  if (!isScriptEntry(selected)) {
+    p.log.error('Please choose a runnable script.')
+    process.exit(1)
+  }
+
+  const entry: ScriptEntry = selected
 
   try {
     await provider.runScript({

@@ -34,6 +34,10 @@ export async function selectSearchPrompt<T = string>(
     render(this: AutocompletePrompt<SearchOption<T>>) {
       const input = this.userInput
       const allOptions = this.options
+      const totalSelectableOptions = allOptions.filter((o) => !o.disabled).length
+      const filteredSelectableOptions = this.filteredOptions.filter(
+        (o) => !o.disabled,
+      ).length
       const color = this.state === 'error' ? 'yellow' : 'cyan'
       const bar = styleText(color, S_BAR)
 
@@ -47,11 +51,11 @@ export async function selectSearchPrompt<T = string>(
           : cursor
 
       const matchInfo =
-        this.filteredOptions.length === allOptions.length
+        filteredSelectableOptions === totalSelectableOptions
           ? ''
           : styleText(
               'dim',
-              ` (${this.filteredOptions.length} match${this.filteredOptions.length === 1 ? '' : 'es'})`,
+              ` (${filteredSelectableOptions} match${filteredSelectableOptions === 1 ? '' : 'es'})`,
             )
 
       switch (this.state) {
@@ -71,6 +75,9 @@ export async function selectSearchPrompt<T = string>(
 
           const styleOption = (option: SearchOption<T>, active: boolean) => {
             const label = option.label ?? String(option.value ?? '')
+            if (option.disabled) {
+              return styleText(['bold', 'dim'], label)
+            }
             const hint =
               option.hint && active ? styleText('dim', ` (${option.hint})`) : ''
             const radio = active

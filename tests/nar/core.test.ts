@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { buildScriptOptions, collectScripts } from '../../src/nar/core.ts'
+import {
+  buildScriptOptions,
+  collectScripts,
+  getScriptGroupOrder,
+} from '../../src/nar/core.ts'
 import type { RepoPackageItem } from '../../src/type.ts'
 
 // eslint-disable-next-line no-control-regex
@@ -129,13 +133,17 @@ describe('buildScriptOptions', () => {
   it('omits package name for root scripts in monorepo', () => {
     const options = buildScriptOptions(entries, true)
 
-    expect(strip(options[0].label)).toBe('dev')
+    expect(strip(options[0].label)).toBe('Root scripts')
+    expect(options[0].disabled).toBe(true)
+    expect(strip(options[1].label)).toBe('dev')
   })
 
-  it('prefixes package name for non-root scripts in monorepo', () => {
+  it('creates package group headers for non-root scripts in monorepo', () => {
     const options = buildScriptOptions(entries, true)
 
-    expect(strip(options[1].label)).toBe('@scope/pkg-a > build')
+    expect(strip(options[2].label)).toBe('@scope/pkg-a')
+    expect(options[2].disabled).toBe(true)
+    expect(strip(options[3].label)).toBe('build')
   })
 
   it('sets command as hint', () => {
@@ -155,5 +163,32 @@ describe('buildScriptOptions', () => {
   it('returns empty array for empty input', () => {
     expect(buildScriptOptions([], false)).toEqual([])
     expect(buildScriptOptions([], true)).toEqual([])
+  })
+
+  it('keeps group order as root first, then workspace packages in order', () => {
+    const packageBEntry = {
+      scriptName: 'lint',
+      command: 'eslint .',
+      packageName: '@scope/pkg-b',
+      cwd: '/workspace/pkg-b',
+      isRoot: false,
+    }
+    const fullEntries = [rootEntry, workspaceEntry, packageBEntry]
+    const filteredEntries = [packageBEntry, rootEntry, workspaceEntry]
+
+    const options = buildScriptOptions(
+      filteredEntries,
+      true,
+      getScriptGroupOrder(fullEntries),
+    )
+
+    expect(options.map((option) => strip(option.label))).toEqual([
+      'Root scripts',
+      'dev',
+      '@scope/pkg-a',
+      'build',
+      '@scope/pkg-b',
+      'lint',
+    ])
   })
 })
