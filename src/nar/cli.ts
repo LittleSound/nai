@@ -8,6 +8,7 @@ import { detectProvider } from '../detect.ts'
 import { commandOverviewText } from '../help.ts'
 import { selectSearchPrompt } from '../prompts/select-search.ts'
 import { providers } from '../providers/index.ts'
+import { maybePromptForCliUpdate } from '../update.ts'
 import {
   buildHighlightedOptions,
   buildScriptOptions,
@@ -54,6 +55,21 @@ async function run() {
     process.exit(1)
   }
   const { provider } = detected
+
+  const updateResult = await maybePromptForCliUpdate({
+    toolName: 'nar',
+    providerName: provider.name,
+  })
+
+  if (updateResult === 'cancelled') {
+    p.cancel('Cancelled.')
+    process.exit(0)
+  }
+
+  if (updateResult === 'updated') {
+    p.outro('')
+    return
+  }
 
   // --- Direct mode: nar <script> [...args] ---
   if (rawArgs.length > 0) {

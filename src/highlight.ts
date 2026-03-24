@@ -1,4 +1,6 @@
-import c from 'ansis'
+import { Ansis } from 'ansis'
+
+const highlightColor = new Ansis(3)
 
 /** Apply highlight styling to characters at the given positions */
 export function highlightPositions(
@@ -8,7 +10,7 @@ export function highlightPositions(
 ): string {
   let result = ''
   for (const [i, ch] of [...text].entries()) {
-    result += positions.has(offset + i) ? c.underline.cyan(ch) : ch
+    result += positions.has(offset + i) ? highlightColor.underline.cyan(ch) : ch
   }
   return result
 }
