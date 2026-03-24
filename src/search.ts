@@ -1,5 +1,6 @@
 import process from 'node:process'
 import c from 'ansis'
+import { highlightKeywords } from './highlight.ts'
 import { searchPrompt, type SearchOption } from './prompts/search.ts'
 import { openInBrowser, parsePackageSpec, type ParsedPackage } from './utils.ts'
 
@@ -92,15 +93,18 @@ export async function promptPackages(): Promise<
             const exactMatch = results.find((pkg) => pkg.name === input)
             searchResults = results
               .filter((pkg) => pkg.name !== input)
-              .map((pkg) => ({
-                value: pkg.name,
-                label: `${pkg.name} ${c.blue(`v${pkg.version}`)}`,
-                hint: pkg.description
+              .map((pkg) => {
+                const desc = pkg.description
                   ? pkg.description.length > 60
                     ? `${pkg.description.slice(0, 57)}...`
                     : pkg.description
-                  : undefined,
-              }))
+                  : undefined
+                return {
+                  value: pkg.name,
+                  label: `${highlightKeywords(pkg.name, input)} ${c.blue(`v${pkg.version}`)}`,
+                  hint: desc ? highlightKeywords(desc, input) : undefined,
+                }
+              })
 
             const updatedOpts: SearchOption[] = []
             if (isPackageName) {

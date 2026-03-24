@@ -9,6 +9,7 @@ import { commandOverviewText } from '../help.ts'
 import { selectSearchPrompt } from '../prompts/select-search.ts'
 import { providers } from '../providers/index.ts'
 import {
+  buildHighlightedOptions,
   buildScriptOptions,
   collectScripts,
   getScriptGroupOrder,
@@ -106,11 +107,7 @@ async function run() {
     options() {
       const input = (this.userInput ?? '').trim()
       if (!input) return allOptions
-      return buildScriptOptions(
-        fzf.find(input).map((result) => result.item),
-        isMonorepo,
-        groupOrder,
-      )
+      return buildHighlightedOptions(fzf.find(input), isMonorepo, groupOrder)
     },
     filter: () => true,
   })

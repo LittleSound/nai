@@ -1,4 +1,6 @@
 import c from 'ansis'
+import type { FzfResultItem } from 'fzf'
+import { highlightPositions } from '../highlight.ts'
 import type { SearchOption } from '../prompts/search.ts'
 import type { RepoPackageItem } from '../type.ts'
 
@@ -67,7 +69,7 @@ export function collectScripts(packages: RepoPackageItem[]): ScriptEntry[] {
   return entries
 }
 
-/** Build search options from script entries, prefixing package name for non-root in monorepos */
+/** Build grouped search options for monorepos, with root scripts listed first. */
 export function buildScriptOptions(
   scripts: ScriptEntry[],
   isMonorepo: boolean,
@@ -104,10 +106,57 @@ export function buildScriptOptions(
     const label = groupLabels.get(groupId) ?? groupId
     return [
       {
+        value: { kind: 'group', id: groupId, label },
+        label: c.bold(label),
+        disabled: true,
+      },
+      ...groups.get(groupId)!,
+    ]
+  })
+}
+
+/**
+ * Build highlighted search options from fzf results while preserving monorepo grouping.
+ * Selector layout (monorepo): `${scriptName} ${packageName} ${command}`
+ * Selector layout (single):   `${scriptName} ${command}`
+ */
+export function buildHighlightedOptions(
+  results: FzfResultItem<ScriptEntry>[],
+  isMonorepo: boolean,
+  groupOrder: string[] = getScriptGroupOrder(results.map((result) => result.item)),
+): SearchOption<ScriptOptionValue>[] {
+  if (!isMonorepo) {
+    return results.map((result) => buildHighlightedOption(result, false))
+  }
+
+  const groups = new Map<string, SearchOption<ScriptOptionValue>[]>()
+  const groupLabels = new Map<string, string>()
+
+  for (const result of results) {
+    const entry = result.item
+    const groupId = getGroupId(entry)
+
+    if (!groups.has(groupId)) groups.set(groupId, [])
+    if (!groupLabels.has(groupId)) {
+      groupLabels.set(groupId, buildHighlightedGroupLabel(result))
+    }
+
+    groups.get(groupId)!.push(buildHighlightedOption(result, true))
+  }
+
+  const orderedGroupIds = [
+    ...groupOrder.filter((groupId) => groups.has(groupId)),
+    ...[...groups.keys()].filter((groupId) => !groupOrder.includes(groupId)),
+  ]
+
+  return orderedGroupIds.flatMap((groupId) => {
+    const label = groupLabels.get(groupId) ?? groupId
+    return [
+      {
         value: {
           kind: 'group',
           id: groupId,
-          label,
+          label: stripAnsi(label),
         },
         label: c.bold(label),
         disabled: true,
@@ -115,4 +164,35 @@ export function buildScriptOptions(
       ...groups.get(groupId)!,
     ]
   })
+}
+
+function buildHighlightedOption(
+  result: FzfResultItem<ScriptEntry>,
+  isMonorepo: boolean,
+): SearchOption<ScriptOptionValue> {
+  const entry = result.item
+  const positions = result.positions
+
+  const scriptOffset = 0
+  const commandOffset = isMonorepo
+    ? entry.scriptName.length + 1 + entry.packageName.length + 1
+    : entry.scriptName.length + 1
+
+  return {
+    value: entry,
+    label: highlightPositions(entry.scriptName, positions, scriptOffset),
+    hint: highlightPositions(entry.command, positions, commandOffset),
+  }
+}
+
+function buildHighlightedGroupLabel(result: FzfResultItem<ScriptEntry>): string {
+  const entry = result.item
+  if (entry.isRoot) return 'Root scripts'
+
+  const packageOffset = entry.scriptName.length + 1
+  return highlightPositions(entry.packageName, result.positions, packageOffset)
+}
+
+function stripAnsi(text: string): string {
+  return text.replaceAll(/\u001B\[[\d;]*m/g, '')
 }
