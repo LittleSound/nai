@@ -1,6 +1,8 @@
 import c from 'ansis'
+import { highlightPositions } from '../highlight.ts'
 import type { SearchOption } from '../prompts/search.ts'
 import type { RepoPackageItem } from '../type.ts'
+import type { FzfResultItem } from 'fzf'
 
 export interface ScriptEntry {
   scriptName: string
@@ -36,12 +38,73 @@ export function buildScriptOptions(
   scripts: ScriptEntry[],
   isMonorepo: boolean,
 ): SearchOption<ScriptEntry>[] {
-  return scripts.map((entry) => ({
+  return scripts.map((entry) => buildOption(entry, isMonorepo))
+}
+
+/**
+ * Build highlighted search options from fzf results.
+ * Maps fzf positions back to label/hint parts based on the selector layout.
+ *
+ * Selector layout (monorepo): `${scriptName} ${packageName} ${command}`
+ * Selector layout (single):   `${scriptName} ${command}`
+ */
+export function buildHighlightedOptions(
+  results: FzfResultItem<ScriptEntry>[],
+  isMonorepo: boolean,
+): SearchOption<ScriptEntry>[] {
+  return results.map((r) => {
+    const entry = r.item
+    const pos = r.positions
+
+    const sLen = entry.scriptName.length
+    const pLen = entry.packageName.length
+
+    // Map selector offsets to display parts
+    const scriptOffset = 0
+    const commandOffset = isMonorepo ? sLen + 1 + pLen + 1 : sLen + 1
+
+    const highlightedScript = highlightPositions(
+      entry.scriptName,
+      pos,
+      scriptOffset,
+    )
+    const highlightedCommand = highlightPositions(
+      entry.command,
+      pos,
+      commandOffset,
+    )
+
+    let label: string
+    if (isMonorepo && !entry.isRoot) {
+      const pkgOffset = sLen + 1
+      const highlightedPkg = highlightPositions(
+        entry.packageName,
+        pos,
+        pkgOffset,
+      )
+      label = `${c.magenta(highlightedPkg)} ${c.dim('>')} ${highlightedScript}`
+    } else {
+      label = highlightedScript
+    }
+
+    return {
+      value: entry,
+      label,
+      hint: highlightedCommand,
+    }
+  })
+}
+
+function buildOption(
+  entry: ScriptEntry,
+  isMonorepo: boolean,
+): SearchOption<ScriptEntry> {
+  return {
     value: entry,
     label:
       isMonorepo && !entry.isRoot
         ? `${c.magenta(entry.packageName)} ${c.dim('>')} ${entry.scriptName}`
         : entry.scriptName,
     hint: entry.command,
-  }))
+  }
 }

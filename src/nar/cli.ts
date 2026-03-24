@@ -8,8 +8,12 @@ import { detectProvider } from '../detect.ts'
 import { commandOverviewText } from '../help.ts'
 import { selectSearchPrompt } from '../prompts/select-search.ts'
 import { providers } from '../providers/index.ts'
-import { buildScriptOptions, collectScripts, type ScriptEntry } from './core.ts'
-import type { SearchOption } from '../prompts/search.ts'
+import {
+  buildHighlightedOptions,
+  buildScriptOptions,
+  collectScripts,
+  type ScriptEntry,
+} from './core.ts'
 
 function printHelp(): void {
   console.log(
@@ -94,17 +98,12 @@ async function run() {
     tiebreakers: [byRootFirst, byLengthAsc],
   })
 
-  const optionMap = new Map(allOptions.map((opt) => [opt.value, opt]))
-
   const selected = await selectSearchPrompt<ScriptEntry>({
     message: 'Run a script',
     options() {
       const input = (this.userInput ?? '').trim()
       if (!input) return allOptions
-      const results = fzf.find(input)
-      return results
-        .map((r) => optionMap.get(r.item))
-        .filter((o): o is SearchOption<ScriptEntry> => o != null)
+      return buildHighlightedOptions(fzf.find(input), isMonorepo)
     },
     filter: () => true,
   })
