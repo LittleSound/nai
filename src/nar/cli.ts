@@ -12,6 +12,7 @@ import { editArgsPrompt } from '../prompts/edit-args.ts'
 import { selectSearchPrompt } from '../prompts/select-search.ts'
 import { providers } from '../providers/index.ts'
 import { checkForUpdates } from '../update-check.ts'
+import { getAppStartIntro } from '../utils.ts'
 import {
   buildHighlightedOptions,
   buildScriptOptions,
@@ -22,7 +23,7 @@ import {
 function printHelp(): void {
   console.log(
     [
-      `nar v${version}`,
+      getAppStartIntro(),
       '',
       String(c.bold('Usage')),
       `  ${c.green('nar')}                    Interactive script selection`,
@@ -76,7 +77,7 @@ async function run() {
   // --- Interactive mode ---
   const showUpdateNotification = checkForUpdates()
 
-  p.intro(`${c.magenta`nar`} ${c.dim`v${version}`}`)
+  p.intro(getAppStartIntro())
 
   const { packages } = await provider.listPackages()
   const scripts = collectScripts(packages)

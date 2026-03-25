@@ -1,5 +1,7 @@
 import { exec } from 'node:child_process'
 import process from 'node:process'
+import c from 'ansis'
+import { version } from '../package.json'
 
 export function openInBrowser(url: string) {
   const cmd =
@@ -43,4 +45,8 @@ export function parsePackageSpec(spec: string): ParsedPackage {
     name: spec.slice(0, atIndex),
     version: spec.slice(atIndex + 1) || undefined,
   }
+}
+
+export function getAppStartIntro(): string {
+  return `${c.yellow`@rizumu/nai`} ${c.dim`v${version}`}`
 }

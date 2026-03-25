@@ -15,7 +15,11 @@ import { commandOverviewText } from './help.ts'
 import { providers } from './providers/index.ts'
 import { getCachedVersion, promptPackages } from './search.ts'
 import { checkForUpdates } from './update-check.ts'
-import { parsePackageSpec, type ParsedPackage } from './utils.ts'
+import {
+  getAppStartIntro,
+  parsePackageSpec,
+  type ParsedPackage,
+} from './utils.ts'
 import type { Provider } from './type.ts'
 
 /** Guard against user cancellation (Ctrl+C) */
@@ -38,7 +42,7 @@ async function run(
 ) {
   const showUpdateNotification = checkForUpdates()
 
-  p.intro(`${c.yellow`@rizumu/nai`} ${c.dim`v${version}`}`)
+  p.intro(getAppStartIntro())
 
   // --- Detect or select package manager ---
   let provider: Provider
@@ -363,6 +367,7 @@ cli
   .action(run)
 
 cli.help((sections) => {
+  sections[0].body = getAppStartIntro()
   sections.push({
     body: commandOverviewText(),
   })
