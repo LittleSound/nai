@@ -11,6 +11,7 @@ import { commandOverviewText } from '../help.ts'
 import { editArgsPrompt } from '../prompts/edit-args.ts'
 import { selectSearchPrompt } from '../prompts/select-search.ts'
 import { providers } from '../providers/index.ts'
+import { checkForUpdates } from '../update-check.ts'
 import {
   buildHighlightedOptions,
   buildScriptOptions,
@@ -73,6 +74,8 @@ async function run() {
   }
 
   // --- Interactive mode ---
+  const showUpdateNotification = checkForUpdates()
+
   p.intro(`${c.magenta`nar`} ${c.dim`v${version}`}`)
 
   const { packages } = await provider.listPackages()
@@ -130,6 +133,8 @@ async function run() {
     value: ScriptEntry
   }
 
+  const notify = await showUpdateNotification
+
   if (action === 'edit') {
     const baseCommand = await provider.runScript({
       scriptName: entry.scriptName,
@@ -156,6 +161,7 @@ async function run() {
         ? `${baseCommand} ${(extra as string).trim()}`
         : baseCommand
 
+    notify()
     p.outro(`${c.dim`$`} ${c.green(fullCommand)}`)
 
     try {
@@ -164,18 +170,20 @@ async function run() {
       const status = (error as { status?: number }).status ?? 1
       process.exit(status)
     }
-    return
-  }
-
-  try {
-    const cmd = await provider.runScript({
-      scriptName: entry.scriptName,
-      cwd: entry.cwd,
-    })
-    p.outro(`${c.dim`$`} ${c.green(cmd)}`)
-  } catch (error: unknown) {
-    const status = (error as { status?: number }).status ?? 1
-    process.exit(status)
+  } else {
+    try {
+      await provider.runScript({
+        scriptName: entry.scriptName,
+        cwd: entry.cwd,
+        logger(cmd) {
+          notify()
+          p.outro(`${c.dim`$`} ${c.green(cmd)}`)
+        },
+      })
+    } catch (error: unknown) {
+      const status = (error as { status?: number }).status ?? 1
+      process.exit(status)
+    }
   }
 }
 

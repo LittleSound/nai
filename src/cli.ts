@@ -14,6 +14,7 @@ import { detectProvider } from './detect.ts'
 import { commandOverviewText } from './help.ts'
 import { providers } from './providers/index.ts'
 import { getCachedVersion, promptPackages } from './search.ts'
+import { checkForUpdates } from './update-check.ts'
 import { parsePackageSpec, type ParsedPackage } from './utils.ts'
 import type { Provider } from './type.ts'
 
@@ -35,6 +36,8 @@ async function run(
     catalog?: string
   },
 ) {
+  const showUpdateNotification = checkForUpdates()
+
   p.intro(`${c.yellow`@rizumu/nai`} ${c.dim`v${version}`}`)
 
   // --- Detect or select package manager ---
@@ -323,6 +326,10 @@ async function run(
   const confirmed = guardCancel(
     await p.confirm({ message: c.green('Looks good?') }),
   )
+
+  // eslint-disable-next-line no-void
+  void (await showUpdateNotification)()
+
   if (!confirmed) {
     p.cancel('Cancelled.')
     process.exit(0)
