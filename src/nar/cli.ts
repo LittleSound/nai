@@ -48,7 +48,7 @@ async function run() {
   }
 
   if (rawArgs.includes('--version') || rawArgs.includes('-v')) {
-    console.log(`nar v${version}`)
+    console.log(`@rizumu/nai v${version}`)
     return
   }
 
