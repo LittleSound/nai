@@ -1,7 +1,7 @@
 {
   "name": "@rizumu/nai",
   "type": "module",
-  "version": "26.24.0",
+  "version": "26.24.1",
   "packageManager": "pnpm@10.31.0",
   "description": "Interactive CLI for installing dependencies with catalog support",
   "author": "Rizumu <rizumu@ayaka.moe>",
