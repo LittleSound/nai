@@ -1,11 +1,14 @@
 #!/usr/bin/env node
+import { execSync } from 'node:child_process'
 import process from 'node:process'
 import * as p from '@clack/prompts'
 import c from 'ansis'
 import { byLengthAsc, Fzf } from 'fzf'
 import { version } from '../../package.json'
+import { copyToClipboard } from '../clipboard.ts'
 import { detectProvider } from '../detect.ts'
 import { commandOverviewText } from '../help.ts'
+import { editArgsPrompt } from '../prompts/edit-args.ts'
 import { selectSearchPrompt } from '../prompts/select-search.ts'
 import { providers } from '../providers/index.ts'
 import {
@@ -106,6 +109,15 @@ async function run() {
       return buildHighlightedOptions(fzf.find(input), isMonorepo)
     },
     filter: () => true,
+    onCopy(entry) {
+      provider
+        .runScript({ scriptName: entry.scriptName, execute: false })
+        .then((cmd) => {
+          if (copyToClipboard(cmd)) {
+            p.log.info(`Copied: ${c.dim(cmd)}`)
+          }
+        })
+    },
   })
 
   if (p.isCancel(selected)) {
@@ -113,14 +125,54 @@ async function run() {
     process.exit(0)
   }
 
-  const entry = selected as ScriptEntry
+  const { action, value: entry } = selected as {
+    action: string
+    value: ScriptEntry
+  }
+
+  if (action === 'edit') {
+    const baseCommand = await provider.runScript({
+      scriptName: entry.scriptName,
+      execute: false,
+    })
+
+    const extra = await editArgsPrompt({
+      message: 'Edit command',
+      prefix: `${baseCommand} `,
+      onCopy(fullCommand) {
+        if (copyToClipboard(fullCommand)) {
+          p.log.info(`Copied: ${c.dim(fullCommand)}`)
+        }
+      },
+    })
+
+    if (p.isCancel(extra)) {
+      p.cancel('Cancelled.')
+      process.exit(0)
+    }
+
+    const fullCommand =
+      (extra as string).trim().length > 0
+        ? `${baseCommand} ${(extra as string).trim()}`
+        : baseCommand
+
+    p.outro(`${c.dim`$`} ${c.green(fullCommand)}`)
+
+    try {
+      execSync(fullCommand, { cwd: entry.cwd, stdio: 'inherit' })
+    } catch (error: unknown) {
+      const status = (error as { status?: number }).status ?? 1
+      process.exit(status)
+    }
+    return
+  }
 
   try {
-    await provider.runScript({
+    const cmd = await provider.runScript({
       scriptName: entry.scriptName,
       cwd: entry.cwd,
-      logger: (msg) => p.outro(`${c.dim`$`} ${c.green(msg)}`),
     })
+    p.outro(`${c.dim`$`} ${c.green(cmd)}`)
   } catch (error: unknown) {
     const status = (error as { status?: number }).status ?? 1
     process.exit(status)

@@ -145,12 +145,15 @@ export function createYarnProvider(cwd = process.cwd()): Provider {
 
     runScript(options: RunScriptOptions) {
       const args = ['run', options.scriptName, ...(options.args ?? [])]
-      options.logger?.(`yarn ${args.join(' ')}`)
-      execFileSync('yarn', args, {
-        cwd: options.cwd ?? cwd,
-        stdio: 'inherit',
-      })
-      return Promise.resolve()
+      const command = `yarn ${args.join(' ')}`
+      options.logger?.(command)
+      if (options.execute !== false) {
+        execFileSync('yarn', args, {
+          cwd: options.cwd ?? cwd,
+          stdio: 'inherit',
+        })
+      }
+      return Promise.resolve(command)
     },
   }
 }

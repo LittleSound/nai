@@ -62,8 +62,9 @@ export type Provider = {
    * Run a package.json script through this package manager.
    * Handles PM-specific argument forwarding (e.g. npm requires `--` before
    * extra args) and spawns the process with inherited stdio.
+   * Always returns the resolved command string (e.g. "pnpm run lint --fix").
    */
-  runScript: (options: RunScriptOptions) => Promise<void>
+  runScript: (options: RunScriptOptions) => Promise<string>
 }
 
 export type DepInstallOptions = {
@@ -96,6 +97,12 @@ export type RunScriptOptions = {
   cwd?: string
   /** Log progress messages during execution */
   logger?: (message: string) => void
+  /**
+   * Whether to actually execute the command.
+   * When false, only resolves and returns the command string.
+   * @default true
+   */
+  execute?: boolean
 }
 
 export type RepoPackageItem = {

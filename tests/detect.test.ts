@@ -149,7 +149,7 @@ describe('detectProvider', () => {
       listPackages: () => Promise.resolve({ packages: [] }),
       depInstallExecutor: () => Promise.resolve(),
       install: () => Promise.resolve(),
-      runScript: () => Promise.resolve(),
+      runScript: () => Promise.resolve(''),
     }
   }
 

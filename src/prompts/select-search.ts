@@ -11,6 +11,10 @@ import {
 } from '@clack/prompts'
 import type { SearchOption } from './search.ts'
 
+export type SelectSearchResult<T> =
+  | { action: 'submit'; value: T }
+  | { action: 'edit'; value: T }
+
 export interface SelectSearchPromptOptions<T = string> {
   message: string
   options:
@@ -18,15 +22,19 @@ export interface SelectSearchPromptOptions<T = string> {
     | ((this: AutocompletePrompt<SearchOption<T>>) => SearchOption<T>[])
   filter?: (search: string, option: SearchOption<T>) => boolean
   maxItems?: number
+  /** Called when user presses Ctrl+Y to copy the focused item */
+  onCopy?: (value: T) => void
 }
 
 /**
  * A single-select search prompt — the user picks exactly one option.
- * Enter immediately confirms the focused item.
+ * Enter confirms the focused item. Tab confirms with "edit" action.
  */
 export async function selectSearchPrompt<T = string>(
   opts: SelectSearchPromptOptions<T>,
-): Promise<T | symbol> {
+): Promise<SelectSearchResult<T> | symbol> {
+  let editRequested = false
+
   const prompt = new AutocompletePrompt<SearchOption<T>>({
     options: opts.options,
     multiple: false,
@@ -96,6 +104,8 @@ export async function selectSearchPrompt<T = string>(
           const hints = [
             `${styleText('dim', '↑/↓')} navigate`,
             `${styleText('dim', 'Enter:')} run`,
+            `${styleText('dim', 'Tab:')} edit args`,
+            ...(opts.onCopy ? [`${styleText('dim', 'Ctrl+Y:')} copy`] : []),
           ]
           const bottom = [
             ...(hasOptions
@@ -125,8 +135,37 @@ export async function selectSearchPrompt<T = string>(
     },
   })
 
+  // Tab confirms the focused item with "edit" action
+  const tabHandler = (_ch: unknown, key: { name?: string }) => {
+    if (key?.name === 'tab' && prompt.focusedValue != null) {
+      editRequested = true
+      process.stdin.emit('keypress', '', { name: 'return' })
+    }
+  }
+  process.stdin.prependListener('keypress', tabHandler)
+
+  // Ctrl+Y copies the focused item's command
+  const copyHandler = opts.onCopy
+    ? (_ch: unknown, key: { name?: string; ctrl?: boolean }) => {
+        if (key?.name === 'y' && key.ctrl && prompt.focusedValue != null) {
+          opts.onCopy!(prompt.focusedValue as T)
+        }
+      }
+    : null
+  if (copyHandler) {
+    process.stdin.prependListener('keypress', copyHandler)
+  }
+
+  prompt.once('finalize', () => {
+    process.stdin.removeListener('keypress', tabHandler)
+    if (copyHandler) {
+      process.stdin.removeListener('keypress', copyHandler)
+    }
+  })
+
   const result = await prompt.prompt()
   if (isCancel(result)) return result as symbol
   const values = result as T | T[]
-  return Array.isArray(values) ? values[0] : values
+  const value = Array.isArray(values) ? values[0] : values
+  return { action: editRequested ? 'edit' : 'submit', value }
 }

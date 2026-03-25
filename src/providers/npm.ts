@@ -94,12 +94,15 @@ export function createNpmProvider(cwd = process.cwd()): Provider {
         options.scriptName,
         ...(extra.length > 0 ? ['--', ...extra] : []),
       ]
-      options.logger?.(`npm ${args.join(' ')}`)
-      execFileSync('npm', args, {
-        cwd: options.cwd ?? cwd,
-        stdio: 'inherit',
-      })
-      return Promise.resolve()
+      const command = `npm ${args.join(' ')}`
+      options.logger?.(command)
+      if (options.execute !== false) {
+        execFileSync('npm', args, {
+          cwd: options.cwd ?? cwd,
+          stdio: 'inherit',
+        })
+      }
+      return Promise.resolve(command)
     },
   }
 }

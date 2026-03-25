@@ -212,12 +212,15 @@ export function createBunProvider(cwd = process.cwd()): Provider {
 
     runScript(options: RunScriptOptions) {
       const args = ['run', options.scriptName, ...(options.args ?? [])]
-      options.logger?.(`bun ${args.join(' ')}`)
-      execFileSync('bun', args, {
-        cwd: options.cwd ?? cwd,
-        stdio: 'inherit',
-      })
-      return Promise.resolve()
+      const command = `bun ${args.join(' ')}`
+      options.logger?.(command)
+      if (options.execute !== false) {
+        execFileSync('bun', args, {
+          cwd: options.cwd ?? cwd,
+          stdio: 'inherit',
+        })
+      }
+      return Promise.resolve(command)
     },
   }
 }

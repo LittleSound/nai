@@ -150,12 +150,15 @@ export function createPnpmProvider(cwd = process.cwd()): Provider {
 
     runScript(options: RunScriptOptions) {
       const args = ['run', options.scriptName, ...(options.args ?? [])]
-      options.logger?.(`pnpm ${args.join(' ')}`)
-      execFileSync('pnpm', args, {
-        cwd: options.cwd ?? cwd,
-        stdio: 'inherit',
-      })
-      return Promise.resolve()
+      const command = `pnpm ${args.join(' ')}`
+      options.logger?.(command)
+      if (options.execute !== false) {
+        execFileSync('pnpm', args, {
+          cwd: options.cwd ?? cwd,
+          stdio: 'inherit',
+        })
+      }
+      return Promise.resolve(command)
     },
   }
 }

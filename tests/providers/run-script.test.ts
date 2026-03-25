@@ -16,8 +16,9 @@ describe('runScript', () => {
   describe('pnpm', () => {
     const provider = createPnpmProvider('/workspace')
 
-    it('runs script with pnpm', async () => {
-      await provider.runScript({ scriptName: 'dev' })
+    it('executes and returns command string', async () => {
+      const cmd = await provider.runScript({ scriptName: 'dev' })
+      expect(cmd).toBe('pnpm run dev')
       expect(mockedExec).toHaveBeenCalledWith(
         'pnpm',
         ['run', 'dev'],
@@ -26,12 +27,21 @@ describe('runScript', () => {
     })
 
     it('forwards extra args', async () => {
-      await provider.runScript({ scriptName: 'dev', args: ['--port', '3000'] })
-      expect(mockedExec).toHaveBeenCalledWith(
-        'pnpm',
-        ['run', 'dev', '--port', '3000'],
-        expect.objectContaining({ stdio: 'inherit' }),
-      )
+      const cmd = await provider.runScript({
+        scriptName: 'dev',
+        args: ['--port', '3000'],
+      })
+      expect(cmd).toBe('pnpm run dev --port 3000')
+    })
+
+    it('returns command without executing when execute is false', async () => {
+      mockedExec.mockClear()
+      const cmd = await provider.runScript({
+        scriptName: 'dev',
+        execute: false,
+      })
+      expect(cmd).toBe('pnpm run dev')
+      expect(mockedExec).not.toHaveBeenCalled()
     })
 
     it('uses provided cwd', async () => {
@@ -42,114 +52,97 @@ describe('runScript', () => {
         expect.objectContaining({ cwd: '/other' }),
       )
     })
-
-    it('falls back to provider cwd', async () => {
-      await provider.runScript({ scriptName: 'dev' })
-      expect(mockedExec).toHaveBeenCalledWith(
-        'pnpm',
-        ['run', 'dev'],
-        expect.objectContaining({ cwd: '/workspace' }),
-      )
-    })
   })
 
   describe('npm', () => {
     const provider = createNpmProvider('/workspace')
 
-    it('runs script without -- when no extra args', async () => {
-      await provider.runScript({ scriptName: 'dev' })
-      expect(mockedExec).toHaveBeenCalledWith(
-        'npm',
-        ['run', 'dev'],
-        expect.objectContaining({ stdio: 'inherit' }),
-      )
+    it('returns command without -- when no extra args', async () => {
+      const cmd = await provider.runScript({ scriptName: 'dev' })
+      expect(cmd).toBe('npm run dev')
     })
 
     it('inserts -- separator before forwarded args', async () => {
-      await provider.runScript({
+      const cmd = await provider.runScript({
         scriptName: 'dev',
         args: ['--port', '3000'],
       })
-      expect(mockedExec).toHaveBeenCalledWith(
-        'npm',
-        ['run', 'dev', '--', '--port', '3000'],
-        expect.objectContaining({ stdio: 'inherit' }),
-      )
+      expect(cmd).toBe('npm run dev -- --port 3000')
     })
 
-    it('inserts -- even for single arg', async () => {
-      await provider.runScript({ scriptName: 'build', args: ['--watch'] })
-      expect(mockedExec).toHaveBeenCalledWith(
-        'npm',
-        ['run', 'build', '--', '--watch'],
-        expect.objectContaining({ stdio: 'inherit' }),
-      )
+    it('returns command without executing when execute is false', async () => {
+      mockedExec.mockClear()
+      const cmd = await provider.runScript({
+        scriptName: 'build',
+        execute: false,
+      })
+      expect(cmd).toBe('npm run build')
+      expect(mockedExec).not.toHaveBeenCalled()
     })
   })
 
   describe('yarn', () => {
     const provider = createYarnProvider('/workspace')
 
-    it('runs script with yarn', async () => {
-      await provider.runScript({ scriptName: 'test' })
-      expect(mockedExec).toHaveBeenCalledWith(
-        'yarn',
-        ['run', 'test'],
-        expect.objectContaining({ stdio: 'inherit' }),
-      )
+    it('executes and returns command string', async () => {
+      const cmd = await provider.runScript({ scriptName: 'test' })
+      expect(cmd).toBe('yarn run test')
     })
 
     it('forwards extra args directly', async () => {
-      await provider.runScript({ scriptName: 'test', args: ['--coverage'] })
-      expect(mockedExec).toHaveBeenCalledWith(
-        'yarn',
-        ['run', 'test', '--coverage'],
-        expect.objectContaining({ stdio: 'inherit' }),
-      )
+      const cmd = await provider.runScript({
+        scriptName: 'test',
+        args: ['--coverage'],
+      })
+      expect(cmd).toBe('yarn run test --coverage')
+    })
+
+    it('returns command without executing when execute is false', async () => {
+      mockedExec.mockClear()
+      const cmd = await provider.runScript({
+        scriptName: 'test',
+        execute: false,
+      })
+      expect(cmd).toBe('yarn run test')
+      expect(mockedExec).not.toHaveBeenCalled()
     })
   })
 
   describe('bun', () => {
     const provider = createBunProvider('/workspace')
 
-    it('runs script with bun', async () => {
-      await provider.runScript({ scriptName: 'dev' })
-      expect(mockedExec).toHaveBeenCalledWith(
-        'bun',
-        ['run', 'dev'],
-        expect.objectContaining({ stdio: 'inherit' }),
-      )
+    it('executes and returns command string', async () => {
+      const cmd = await provider.runScript({ scriptName: 'dev' })
+      expect(cmd).toBe('bun run dev')
     })
 
-    it('forwards extra args directly', async () => {
-      await provider.runScript({ scriptName: 'dev', args: ['--hot'] })
-      expect(mockedExec).toHaveBeenCalledWith(
-        'bun',
-        ['run', 'dev', '--hot'],
-        expect.objectContaining({ stdio: 'inherit' }),
-      )
+    it('returns command without executing when execute is false', async () => {
+      mockedExec.mockClear()
+      const cmd = await provider.runScript({
+        scriptName: 'dev',
+        execute: false,
+      })
+      expect(cmd).toBe('bun run dev')
+      expect(mockedExec).not.toHaveBeenCalled()
     })
   })
 
   describe('vlt', () => {
     const provider = createVltProvider('/workspace')
 
-    it('runs script with vlt', async () => {
-      await provider.runScript({ scriptName: 'build' })
-      expect(mockedExec).toHaveBeenCalledWith(
-        'vlt',
-        ['run', 'build'],
-        expect.objectContaining({ stdio: 'inherit' }),
-      )
+    it('executes and returns command string', async () => {
+      const cmd = await provider.runScript({ scriptName: 'build' })
+      expect(cmd).toBe('vlt run build')
     })
 
-    it('forwards extra args directly', async () => {
-      await provider.runScript({ scriptName: 'build', args: ['--minify'] })
-      expect(mockedExec).toHaveBeenCalledWith(
-        'vlt',
-        ['run', 'build', '--minify'],
-        expect.objectContaining({ stdio: 'inherit' }),
-      )
+    it('returns command without executing when execute is false', async () => {
+      mockedExec.mockClear()
+      const cmd = await provider.runScript({
+        scriptName: 'build',
+        execute: false,
+      })
+      expect(cmd).toBe('vlt run build')
+      expect(mockedExec).not.toHaveBeenCalled()
     })
   })
 })

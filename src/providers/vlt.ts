@@ -176,12 +176,15 @@ export function createVltProvider(cwd = process.cwd()): Provider {
 
     runScript(options: RunScriptOptions) {
       const args = ['run', options.scriptName, ...(options.args ?? [])]
-      options.logger?.(`vlt ${args.join(' ')}`)
-      execFileSync('vlt', args, {
-        cwd: options.cwd ?? cwd,
-        stdio: 'inherit',
-      })
-      return Promise.resolve()
+      const command = `vlt ${args.join(' ')}`
+      options.logger?.(command)
+      if (options.execute !== false) {
+        execFileSync('vlt', args, {
+          cwd: options.cwd ?? cwd,
+          stdio: 'inherit',
+        })
+      }
+      return Promise.resolve(command)
     },
   }
 }
