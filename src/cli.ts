@@ -83,6 +83,9 @@ async function run(
 
     // install all dependencies
     if (result === 'install') {
+      // eslint-disable-next-line no-void
+      void (await showUpdateNotification)()
+
       p.log.step(`Running ${c.bold(provider.name)} install`)
       try {
         await provider.install()
