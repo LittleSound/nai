@@ -7,9 +7,12 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetDetectCache } from '../../src/detect.ts'
+import { runCommand } from '../../src/exec.ts'
 import { createVltProvider } from '../../src/providers/vlt.ts'
+
+vi.mock('../../src/exec.ts', () => ({ runCommand: vi.fn() }))
 
 let tempDir: string
 
@@ -18,6 +21,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.mocked(runCommand).mockReset()
   rmSync(tempDir, { recursive: true, force: true })
   resetDetectCache()
 })
@@ -30,6 +34,16 @@ function writePkg(dir: string, pkg: Record<string, unknown> = DEFAULT_PKG) {
 
 function writeConfig(dir: string, config: Record<string, unknown>) {
   writeFileSync(join(dir, 'vlt.json'), JSON.stringify(config, null, 2))
+}
+
+/** Assert the provider ran `vlt install` (mocked) exactly once in `tempDir` */
+function expectInstallRan() {
+  expect(runCommand).toHaveBeenCalledOnce()
+  expect(runCommand).toHaveBeenCalledWith({
+    command: 'vlt',
+    args: ['install'],
+    cwd: tempDir,
+  })
 }
 
 describe('vlt provider', () => {
@@ -204,17 +218,14 @@ describe('vlt provider', () => {
 
       const provider = createVltProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'react', version: '^19.0.0', catalogName: 'prod' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // vlt install may fail in test env
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'react', version: '^19.0.0', catalogName: 'prod' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const config = JSON.parse(readFileSync(join(tempDir, 'vlt.json'), 'utf8'))
       expect(config.catalogs.prod.react).toBe('^19.0.0')
@@ -231,17 +242,14 @@ describe('vlt provider', () => {
 
       const provider = createVltProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'lodash', version: '^4.17.21', catalogName: '' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // vlt install may fail in test env
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'lodash', version: '^4.17.21', catalogName: '' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const config = JSON.parse(readFileSync(join(tempDir, 'vlt.json'), 'utf8'))
       expect(config.catalog.lodash).toBe('^4.17.21')
@@ -257,17 +265,14 @@ describe('vlt provider', () => {
 
       const provider = createVltProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'react', version: '^19.0.0', catalogName: 'ui' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // vlt install may fail in test env
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'react', version: '^19.0.0', catalogName: 'ui' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const config = JSON.parse(readFileSync(join(tempDir, 'vlt.json'), 'utf8'))
       expect(config.catalogs.ui.react).toBe('^19.0.0')
@@ -277,17 +282,14 @@ describe('vlt provider', () => {
       writePkg(tempDir)
       const provider = createVltProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'lodash', version: '^4.17.21' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // vlt install may fail in test env
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'lodash', version: '^4.17.21' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -299,17 +301,14 @@ describe('vlt provider', () => {
       writePkg(tempDir)
       const provider = createVltProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'typescript', version: '^5.0.0', catalogName: 'dev' }],
-          targetPackages: [tempDir],
-          dev: true,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // vlt install may fail in test env
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'typescript', version: '^5.0.0', catalogName: 'dev' }],
+        targetPackages: [tempDir],
+        dev: true,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -325,24 +324,21 @@ describe('vlt provider', () => {
 
       const provider = createVltProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [
-            {
-              name: 'react',
-              version: '^18.3.1',
-              catalogName: 'prod',
-              existsInCatalog: true,
-            },
-          ],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // vlt install may fail in test env
-      }
+      await provider.depInstallExecutor({
+        deps: [
+          {
+            name: 'react',
+            version: '^18.3.1',
+            catalogName: 'prod',
+            existsInCatalog: true,
+          },
+        ],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const config = JSON.parse(readFileSync(join(tempDir, 'vlt.json'), 'utf8'))
       expect(config.catalogs).toEqual({ prod: { react: '^18.3.1' } })
@@ -360,17 +356,14 @@ describe('vlt provider', () => {
       })
       const provider = createVltProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'axios', version: '^1.0.0' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // vlt install may fail in test env
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'axios', version: '^1.0.0' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -383,20 +376,17 @@ describe('vlt provider', () => {
       writePkg(tempDir)
       const provider = createVltProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [
-            { name: 'react', version: '^19.0.0' },
-            { name: 'sass', version: '^1.3.0' },
-          ],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: true,
-          peerOptional: true,
-        })
-      } catch {
-        // vlt install may fail in test env
-      }
+      await provider.depInstallExecutor({
+        deps: [
+          { name: 'react', version: '^19.0.0' },
+          { name: 'sass', version: '^1.3.0' },
+        ],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: true,
+        peerOptional: true,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -414,20 +404,17 @@ describe('vlt provider', () => {
 
       const provider = createVltProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [
-            { name: 'zod', version: '^3.0.0', catalogName: '' },
-            { name: 'axios', version: '^1.0.0', catalogName: '' },
-          ],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // vlt install may fail in test env
-      }
+      await provider.depInstallExecutor({
+        deps: [
+          { name: 'zod', version: '^3.0.0', catalogName: '' },
+          { name: 'axios', version: '^1.0.0', catalogName: '' },
+        ],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const config = JSON.parse(readFileSync(join(tempDir, 'vlt.json'), 'utf8'))
       const keys = Object.keys(config.catalog)
