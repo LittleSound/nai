@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process'
+import spawn from 'cross-spawn'
 import { describe, expect, it, vi } from 'vitest'
 import { createBunProvider } from '../../src/providers/bun.ts'
 import { createNpmProvider } from '../../src/providers/npm.ts'
@@ -6,11 +6,11 @@ import { createPnpmProvider } from '../../src/providers/pnpm.ts'
 import { createVltProvider } from '../../src/providers/vlt.ts'
 import { createYarnProvider } from '../../src/providers/yarn.ts'
 
-vi.mock('node:child_process', () => ({
-  execFileSync: vi.fn(),
+vi.mock('cross-spawn', () => ({
+  default: { sync: vi.fn(() => ({ status: 0 })) },
 }))
 
-const mockedExec = vi.mocked(execFileSync)
+const mockedExec = vi.mocked(spawn.sync)
 
 describe('runScript', () => {
   describe('pnpm', () => {

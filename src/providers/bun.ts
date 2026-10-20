@@ -1,8 +1,8 @@
-import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 import { detectFromPackageJson } from '../detect.ts'
+import { runCommand } from '../exec.ts'
 import {
   readPackageItem,
   resolveWorkspacePackages,
@@ -200,13 +200,13 @@ export function createBunProvider(cwd = process.cwd()): Provider {
 
       // 3. Run bun install
       log('Running bun install')
-      execFileSync('bun', ['install'], { cwd, stdio: 'inherit' })
+      runCommand({ command: 'bun', args: ['install'], cwd })
 
       return Promise.resolve()
     },
 
     install() {
-      execFileSync('bun', ['install'], { cwd, stdio: 'inherit' })
+      runCommand({ command: 'bun', args: ['install'], cwd })
       return Promise.resolve()
     },
 
@@ -215,9 +215,10 @@ export function createBunProvider(cwd = process.cwd()): Provider {
       const command = `bun ${args.join(' ')}`
       options.logger?.(command)
       if (options.execute !== false) {
-        execFileSync('bun', args, {
+        runCommand({
+          command: 'bun',
+          args,
           cwd: options.cwd ?? cwd,
-          stdio: 'inherit',
         })
       }
       return Promise.resolve(command)

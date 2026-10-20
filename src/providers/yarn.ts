@@ -1,9 +1,9 @@
-import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 import { parseDocument } from 'yaml'
 import { detectFromPackageJson } from '../detect.ts'
+import { runCommand } from '../exec.ts'
 import {
   readPackageItem,
   resolveWorkspacePackages,
@@ -133,13 +133,13 @@ export function createYarnProvider(cwd = process.cwd()): Provider {
 
       // 3. Run yarn install
       log('Running yarn install')
-      execFileSync('yarn', ['install'], { cwd, stdio: 'inherit' })
+      runCommand({ command: 'yarn', args: ['install'], cwd })
 
       return Promise.resolve()
     },
 
     install() {
-      execFileSync('yarn', ['install'], { cwd, stdio: 'inherit' })
+      runCommand({ command: 'yarn', args: ['install'], cwd })
       return Promise.resolve()
     },
 
@@ -148,9 +148,10 @@ export function createYarnProvider(cwd = process.cwd()): Provider {
       const command = `yarn ${args.join(' ')}`
       options.logger?.(command)
       if (options.execute !== false) {
-        execFileSync('yarn', args, {
+        runCommand({
+          command: 'yarn',
+          args,
           cwd: options.cwd ?? cwd,
-          stdio: 'inherit',
         })
       }
       return Promise.resolve(command)
