@@ -1,9 +1,9 @@
-import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 import { parseDocument } from 'yaml'
 import { detectFromPackageJson } from '../detect.ts'
+import { runCommand } from '../exec.ts'
 import {
   readPackageItem,
   resolveWorkspacePackages,
@@ -138,13 +138,13 @@ export function createPnpmProvider(cwd = process.cwd()): Provider {
 
       // 3. Run pnpm install
       log('Running pnpm install')
-      execFileSync('pnpm', ['install'], { cwd, stdio: 'inherit' })
+      runCommand({ command: 'pnpm', args: ['install'], cwd })
 
       return Promise.resolve()
     },
 
     install() {
-      execFileSync('pnpm', ['install'], { cwd, stdio: 'inherit' })
+      runCommand({ command: 'pnpm', args: ['install'], cwd })
       return Promise.resolve()
     },
 
@@ -153,9 +153,10 @@ export function createPnpmProvider(cwd = process.cwd()): Provider {
       const command = `pnpm ${args.join(' ')}`
       options.logger?.(command)
       if (options.execute !== false) {
-        execFileSync('pnpm', args, {
+        runCommand({
+          command: 'pnpm',
+          args,
           cwd: options.cwd ?? cwd,
-          stdio: 'inherit',
         })
       }
       return Promise.resolve(command)

@@ -1,8 +1,8 @@
-import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 import { detectFromPackageJson } from '../detect.ts'
+import { runCommand } from '../exec.ts'
 import {
   readPackageItem,
   resolveWorkspacePackages,
@@ -164,13 +164,13 @@ export function createVltProvider(cwd = process.cwd()): Provider {
 
       // 3. Run vlt install
       log('Running vlt install')
-      execFileSync('vlt', ['install'], { cwd, stdio: 'inherit' })
+      runCommand({ command: 'vlt', args: ['install'], cwd })
 
       return Promise.resolve()
     },
 
     install() {
-      execFileSync('vlt', ['install'], { cwd, stdio: 'inherit' })
+      runCommand({ command: 'vlt', args: ['install'], cwd })
       return Promise.resolve()
     },
 
@@ -179,9 +179,10 @@ export function createVltProvider(cwd = process.cwd()): Provider {
       const command = `vlt ${args.join(' ')}`
       options.logger?.(command)
       if (options.execute !== false) {
-        execFileSync('vlt', args, {
+        runCommand({
+          command: 'vlt',
+          args,
           cwd: options.cwd ?? cwd,
-          stdio: 'inherit',
         })
       }
       return Promise.resolve(command)
