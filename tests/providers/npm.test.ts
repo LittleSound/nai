@@ -7,9 +7,12 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetDetectCache } from '../../src/detect.ts'
+import { runCommand } from '../../src/exec.ts'
 import { createNpmProvider } from '../../src/providers/npm.ts'
+
+vi.mock('../../src/exec.ts', () => ({ runCommand: vi.fn() }))
 
 let tempDir: string
 
@@ -18,6 +21,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.mocked(runCommand).mockReset()
   rmSync(tempDir, { recursive: true, force: true })
   resetDetectCache()
 })
@@ -26,6 +30,16 @@ const DEFAULT_PKG = { name: 'test-pkg' }
 
 function writePkg(dir: string, pkg: Record<string, unknown> = DEFAULT_PKG) {
   writeFileSync(join(dir, 'package.json'), JSON.stringify(pkg, null, 2))
+}
+
+/** Assert the provider ran `npm install` (mocked) exactly once in `tempDir` */
+function expectInstallRan() {
+  expect(runCommand).toHaveBeenCalledOnce()
+  expect(runCommand).toHaveBeenCalledWith({
+    command: 'npm',
+    args: ['install'],
+    cwd: tempDir,
+  })
 }
 
 describe('npm provider', () => {
@@ -119,17 +133,14 @@ describe('npm provider', () => {
       writePkg(tempDir)
       const provider = createNpmProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'lodash', version: '^4.17.21' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // npm install may fail in test env
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'lodash', version: '^4.17.21' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -141,17 +152,14 @@ describe('npm provider', () => {
       writePkg(tempDir)
       const provider = createNpmProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'typescript', version: '^5.0.0' }],
-          targetPackages: [tempDir],
-          dev: true,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // npm install may fail in test env
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'typescript', version: '^5.0.0' }],
+        targetPackages: [tempDir],
+        dev: true,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -163,17 +171,14 @@ describe('npm provider', () => {
       writePkg(tempDir)
       const provider = createNpmProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'react', version: '^19.0.0' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: true,
-          peerOptional: false,
-        })
-      } catch {
-        // npm install may fail in test env
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'react', version: '^19.0.0' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: true,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -186,20 +191,17 @@ describe('npm provider', () => {
       writePkg(tempDir)
       const provider = createNpmProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [
-            { name: 'react', version: '^19.0.0' },
-            { name: 'sass', version: '^1.3.0' },
-          ],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: true,
-          peerOptional: true,
-        })
-      } catch {
-        // npm install may fail in test env
-      }
+      await provider.depInstallExecutor({
+        deps: [
+          { name: 'react', version: '^19.0.0' },
+          { name: 'sass', version: '^1.3.0' },
+        ],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: true,
+        peerOptional: true,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -216,20 +218,17 @@ describe('npm provider', () => {
       writePkg(tempDir)
       const provider = createNpmProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [
-            { name: 'zod', version: '^3.0.0' },
-            { name: 'axios', version: '^1.0.0' },
-          ],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: true,
-          peerOptional: true,
-        })
-      } catch {
-        // npm install may fail in test env
-      }
+      await provider.depInstallExecutor({
+        deps: [
+          { name: 'zod', version: '^3.0.0' },
+          { name: 'axios', version: '^1.0.0' },
+        ],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: true,
+        peerOptional: true,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -242,17 +241,14 @@ describe('npm provider', () => {
       writePkg(tempDir)
       const provider = createNpmProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'lodash', version: '^4.17.21' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: true,
-        })
-      } catch {
-        // npm install may fail in test env
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'lodash', version: '^4.17.21' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: true,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -268,17 +264,14 @@ describe('npm provider', () => {
       })
       const provider = createNpmProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'axios', version: '^1.0.0' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // npm install may fail in test env
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'axios', version: '^1.0.0' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -299,17 +292,14 @@ describe('npm provider', () => {
 
       const provider = createNpmProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'lodash', version: '^4.17.21' }],
-          targetPackages: [tempDir, pkgA],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // npm install may fail in test env
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'lodash', version: '^4.17.21' }],
+        targetPackages: [tempDir, pkgA],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const rootPkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),

@@ -7,3 +7,6 @@ dist
 
 *.local.*
 *.local
+
+# Claude Code local state (incl. agent worktrees)
+.claude/

@@ -7,9 +7,12 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetDetectCache } from '../../src/detect.ts'
+import { runCommand } from '../../src/exec.ts'
 import { createBunProvider } from '../../src/providers/bun.ts'
+
+vi.mock('../../src/exec.ts', () => ({ runCommand: vi.fn() }))
 
 let tempDir: string
 
@@ -18,6 +21,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.mocked(runCommand).mockReset()
   rmSync(tempDir, { recursive: true, force: true })
   resetDetectCache()
 })
@@ -26,6 +30,16 @@ const DEFAULT_PKG = { name: 'test-pkg' }
 
 function writePkg(dir: string, pkg: Record<string, unknown> = DEFAULT_PKG) {
   writeFileSync(join(dir, 'package.json'), JSON.stringify(pkg, null, 2))
+}
+
+/** Assert the provider ran `bun install` (mocked) exactly once in `tempDir` */
+function expectInstallRan() {
+  expect(runCommand).toHaveBeenCalledOnce()
+  expect(runCommand).toHaveBeenCalledWith({
+    command: 'bun',
+    args: ['install'],
+    cwd: tempDir,
+  })
 }
 
 describe('bun provider', () => {
@@ -185,17 +199,14 @@ describe('bun provider', () => {
 
       const provider = createBunProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'react', version: '^19.0.0', catalogName: 'prod' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // bun install may fail in test env
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'react', version: '^19.0.0', catalogName: 'prod' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -216,17 +227,14 @@ describe('bun provider', () => {
 
       const provider = createBunProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'react', version: '^19.0.0', catalogName: 'prod' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // bun install may fail
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'react', version: '^19.0.0', catalogName: 'prod' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -243,17 +251,14 @@ describe('bun provider', () => {
       })
       const provider = createBunProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'lodash', version: '^4.17.21', catalogName: '' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // bun install may fail
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'lodash', version: '^4.17.21', catalogName: '' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -266,17 +271,14 @@ describe('bun provider', () => {
       writePkg(tempDir)
       const provider = createBunProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'lodash', version: '^4.17.21' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // bun install may fail
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'lodash', version: '^4.17.21' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -288,17 +290,14 @@ describe('bun provider', () => {
       writePkg(tempDir)
       const provider = createBunProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'lodash', version: '^4.17.21', catalogName: 'dev' }],
-          targetPackages: [tempDir],
-          dev: true,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // bun install may fail
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'lodash', version: '^4.17.21', catalogName: 'dev' }],
+        targetPackages: [tempDir],
+        dev: true,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -310,17 +309,14 @@ describe('bun provider', () => {
       writePkg(tempDir, { name: 'test-pkg' })
       const provider = createBunProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'react', version: '^19.0.0', catalogName: 'prod' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // bun install may fail
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'react', version: '^19.0.0', catalogName: 'prod' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -341,24 +337,21 @@ describe('bun provider', () => {
 
       const provider = createBunProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [
-            {
-              name: 'react',
-              version: '^18.3.1',
-              catalogName: 'prod',
-              existsInCatalog: true,
-            },
-          ],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // bun install may fail
-      }
+      await provider.depInstallExecutor({
+        deps: [
+          {
+            name: 'react',
+            version: '^18.3.1',
+            catalogName: 'prod',
+            existsInCatalog: true,
+          },
+        ],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -376,17 +369,14 @@ describe('bun provider', () => {
       })
       const provider = createBunProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'axios', version: '^1.0.0' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // bun install may fail
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'axios', version: '^1.0.0' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),

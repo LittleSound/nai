@@ -1,9 +1,12 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetDetectCache } from '../../src/detect.ts'
+import { runCommand } from '../../src/exec.ts'
 import { createPnpmProvider } from '../../src/providers/pnpm.ts'
+
+vi.mock('../../src/exec.ts', () => ({ runCommand: vi.fn() }))
 
 let tempDir: string
 
@@ -12,6 +15,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.mocked(runCommand).mockReset()
   rmSync(tempDir, { recursive: true, force: true })
   resetDetectCache()
 })
@@ -21,6 +25,16 @@ const DEFAULT_PKG = { name: 'test-pkg' }
 /** Write a minimal package.json to a directory */
 function writePkg(dir: string, pkg: Record<string, unknown> = DEFAULT_PKG) {
   writeFileSync(join(dir, 'package.json'), JSON.stringify(pkg, null, 2))
+}
+
+/** Assert the provider ran `pnpm install` (mocked) exactly once in `tempDir` */
+function expectInstallRan() {
+  expect(runCommand).toHaveBeenCalledOnce()
+  expect(runCommand).toHaveBeenCalledWith({
+    command: 'pnpm',
+    args: ['install'],
+    cwd: tempDir,
+  })
 }
 
 describe('pnpm provider', () => {
@@ -136,21 +150,16 @@ describe('pnpm provider', () => {
       writeFileSync(join(tempDir, 'pnpm-workspace.yaml'), 'packages: []\n')
 
       const provider = createPnpmProvider(tempDir)
-      // Skip pnpm install since pnpm might not be available in test env
-      // We test the file modifications only
       const { readFileSync } = await import('node:fs')
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'react', version: '^18.3.1', catalogName: 'prod' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // pnpm install may fail in test env, that's ok
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'react', version: '^18.3.1', catalogName: 'prod' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       // Verify workspace yaml was updated
       const yaml = readFileSync(join(tempDir, 'pnpm-workspace.yaml'), 'utf8')
@@ -170,17 +179,14 @@ describe('pnpm provider', () => {
       const provider = createPnpmProvider(tempDir)
       const { readFileSync } = await import('node:fs')
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'lodash', version: '^4.17.21', catalogName: '' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // pnpm install may fail
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'lodash', version: '^4.17.21', catalogName: '' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -194,17 +200,14 @@ describe('pnpm provider', () => {
       const provider = createPnpmProvider(tempDir)
       const { readFileSync } = await import('node:fs')
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'lodash', version: '^4.17.21' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // pnpm install may fail
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'lodash', version: '^4.17.21' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -218,17 +221,14 @@ describe('pnpm provider', () => {
       const provider = createPnpmProvider(tempDir)
       const { readFileSync } = await import('node:fs')
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'vitest', version: '^4.0.0', catalogName: 'dev' }],
-          targetPackages: [tempDir],
-          dev: true,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // pnpm install may fail
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'vitest', version: '^4.0.0', catalogName: 'dev' }],
+        targetPackages: [tempDir],
+        dev: true,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -246,24 +246,21 @@ describe('pnpm provider', () => {
       const provider = createPnpmProvider(tempDir)
       const { readFileSync } = await import('node:fs')
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [
-            {
-              name: 'react',
-              version: '^18.3.1',
-              catalogName: 'prod',
-              existsInCatalog: true,
-            },
-          ],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // pnpm install may fail
-      }
+      await provider.depInstallExecutor({
+        deps: [
+          {
+            name: 'react',
+            version: '^18.3.1',
+            catalogName: 'prod',
+            existsInCatalog: true,
+          },
+        ],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       // Workspace yaml should be unchanged (no extra writes)
       const yaml = readFileSync(join(tempDir, 'pnpm-workspace.yaml'), 'utf8')

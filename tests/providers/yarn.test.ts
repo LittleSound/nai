@@ -7,9 +7,12 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetDetectCache } from '../../src/detect.ts'
+import { runCommand } from '../../src/exec.ts'
 import { createYarnProvider } from '../../src/providers/yarn.ts'
+
+vi.mock('../../src/exec.ts', () => ({ runCommand: vi.fn() }))
 
 let tempDir: string
 
@@ -18,6 +21,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.mocked(runCommand).mockReset()
   rmSync(tempDir, { recursive: true, force: true })
   resetDetectCache()
 })
@@ -26,6 +30,16 @@ const DEFAULT_PKG = { name: 'test-pkg' }
 
 function writePkg(dir: string, pkg: Record<string, unknown> = DEFAULT_PKG) {
   writeFileSync(join(dir, 'package.json'), JSON.stringify(pkg, null, 2))
+}
+
+/** Assert the provider ran `yarn install` (mocked) exactly once in `tempDir` */
+function expectInstallRan() {
+  expect(runCommand).toHaveBeenCalledOnce()
+  expect(runCommand).toHaveBeenCalledWith({
+    command: 'yarn',
+    args: ['install'],
+    cwd: tempDir,
+  })
 }
 
 describe('yarn provider', () => {
@@ -164,17 +178,14 @@ describe('yarn provider', () => {
 
       const provider = createYarnProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'react', version: '^18.3.1', catalogName: 'prod' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // yarn install may fail in test env
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'react', version: '^18.3.1', catalogName: 'prod' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       // Verify .yarnrc.yml was created with catalog entry
       const yml = readFileSync(join(tempDir, '.yarnrc.yml'), 'utf8')
@@ -192,17 +203,14 @@ describe('yarn provider', () => {
       writePkg(tempDir)
       const provider = createYarnProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'lodash', version: '^4.17.21', catalogName: '' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // yarn install may fail
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'lodash', version: '^4.17.21', catalogName: '' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -214,17 +222,14 @@ describe('yarn provider', () => {
       writePkg(tempDir)
       const provider = createYarnProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'lodash', version: '^4.17.21' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // yarn install may fail
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'lodash', version: '^4.17.21' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -236,17 +241,14 @@ describe('yarn provider', () => {
       writePkg(tempDir)
       const provider = createYarnProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'vitest', version: '^4.0.0', catalogName: 'dev' }],
-          targetPackages: [tempDir],
-          dev: true,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // yarn install may fail
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'vitest', version: '^4.0.0', catalogName: 'dev' }],
+        targetPackages: [tempDir],
+        dev: true,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),
@@ -263,24 +265,21 @@ describe('yarn provider', () => {
 
       const provider = createYarnProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [
-            {
-              name: 'react',
-              version: '^18.3.1',
-              catalogName: 'prod',
-              existsInCatalog: true,
-            },
-          ],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // yarn install may fail
-      }
+      await provider.depInstallExecutor({
+        deps: [
+          {
+            name: 'react',
+            version: '^18.3.1',
+            catalogName: 'prod',
+            existsInCatalog: true,
+          },
+        ],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       // .yarnrc.yml should be unchanged
       const yml = readFileSync(join(tempDir, '.yarnrc.yml'), 'utf8')
@@ -300,17 +299,14 @@ describe('yarn provider', () => {
       })
       const provider = createYarnProvider(tempDir)
 
-      try {
-        await provider.depInstallExecutor({
-          deps: [{ name: 'axios', version: '^1.0.0' }],
-          targetPackages: [tempDir],
-          dev: false,
-          peer: false,
-          peerOptional: false,
-        })
-      } catch {
-        // yarn install may fail
-      }
+      await provider.depInstallExecutor({
+        deps: [{ name: 'axios', version: '^1.0.0' }],
+        targetPackages: [tempDir],
+        dev: false,
+        peer: false,
+        peerOptional: false,
+      })
+      expectInstallRan()
 
       const pkg = JSON.parse(
         readFileSync(join(tempDir, 'package.json'), 'utf8'),

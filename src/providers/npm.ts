@@ -1,8 +1,8 @@
-import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 import { detectFromPackageJson } from '../detect.ts'
+import { runCommand } from '../exec.ts'
 import {
   readPackageItem,
   resolveWorkspacePackages,
@@ -77,13 +77,13 @@ export function createNpmProvider(cwd = process.cwd()): Provider {
       }
 
       log('Running npm install')
-      execFileSync('npm', ['install'], { cwd, stdio: 'inherit' })
+      runCommand({ command: 'npm', args: ['install'], cwd })
 
       return Promise.resolve()
     },
 
     install() {
-      execFileSync('npm', ['install'], { cwd, stdio: 'inherit' })
+      runCommand({ command: 'npm', args: ['install'], cwd })
       return Promise.resolve()
     },
 
@@ -97,9 +97,10 @@ export function createNpmProvider(cwd = process.cwd()): Provider {
       const command = `npm ${args.join(' ')}`
       options.logger?.(command)
       if (options.execute !== false) {
-        execFileSync('npm', args, {
+        runCommand({
+          command: 'npm',
+          args,
           cwd: options.cwd ?? cwd,
-          stdio: 'inherit',
         })
       }
       return Promise.resolve(command)
